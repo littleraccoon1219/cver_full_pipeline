@@ -1,0 +1,35 @@
+{
+  "profile": "demo",
+  "storage": {
+    "db_path": "data/cver_full_pipeline.db",
+    "output_dir": "outputs/runs"
+  },
+  "scanner": {
+    "backend_priority": [
+      "mock",
+      "real-cli",
+      "dry-run"
+    ],
+    "use_demo_data": true,
+    "trivy_skip_db_update": true
+  },
+  "llm": {
+    "provider": "mock",
+    "mode": "hybrid"
+  },
+  "rag": {
+    "mode": "keyword-rag"
+  },
+  "redteam": {
+    "execution_level": "dry-run",
+    "require_human_confirm": false
+  },
+  "repair": {
+    "safe_apply": false,
+    "require_human_confirm": true
+  },
+  "policy": {
+    "require_lab_label": true,
+    "allow_public_targets": false
+  }
+}

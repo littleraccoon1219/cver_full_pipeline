@@ -1,0 +1,12 @@
+services:
+  cver:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - CVER_PROFILE=demo
+      - CVER_DB_PATH=/app/data/cver_full_pipeline.db
+      - CVER_LLM_PROVIDER=mock
+    volumes:
+      - ./outputs:/app/outputs
+      - ./data:/app/data

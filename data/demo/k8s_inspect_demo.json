@@ -1,0 +1,43 @@
+{
+  "kind": "Pod",
+  "metadata": {
+    "name": "cver-lab-pod",
+    "namespace": "cver-lab",
+    "labels": {
+      "cver-lab": "true"
+    }
+  },
+  "spec": {
+    "hostNetwork": true,
+    "hostPID": true,
+    "runtimeClassName": "kata",
+    "containers": [
+      {
+        "name": "app",
+        "image": "demo/nginx:lab",
+        "securityContext": {
+          "privileged": true,
+          "capabilities": {
+            "add": [
+              "SYS_ADMIN"
+            ]
+          }
+        },
+        "volumeMounts": [
+          {
+            "name": "dockersock",
+            "mountPath": "/var/run/docker.sock"
+          }
+        ]
+      }
+    ],
+    "volumes": [
+      {
+        "name": "dockersock",
+        "hostPath": {
+          "path": "/var/run/docker.sock"
+        }
+      }
+    ]
+  }
+}

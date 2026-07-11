@@ -1,0 +1,6 @@
+{% extends "base.html" %}{% block content %}
+<h1>CVER Dashboard</h1>
+<p>面向容器漏洞分类、可利用性判断、逃逸路径图、受控红队测评、防护评分与修复复测。</p>
+<div class="grid"><section><h2>Doctor</h2><pre>{{ doctor | tojson(indent=2) }}</pre></section><section><h2>Safety</h2><p>默认 dry-run；不执行真实逃逸 PoC；不允许任意 shell；只允许授权靶场。</p></section></div>
+<a class="button" href="/scan">Run Demo Pipeline</a>
+{% endblock %}

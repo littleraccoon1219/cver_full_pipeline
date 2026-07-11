@@ -1,0 +1,37 @@
+{
+  "Id": "demo-container-id",
+  "Name": "/cver-lab-nginx",
+  "Config": {
+    "Image": "demo/nginx:lab",
+    "Labels": {
+      "cver-lab": "true"
+    }
+  },
+  "HostConfig": {
+    "Privileged": true,
+    "CapAdd": [
+      "SYS_ADMIN"
+    ],
+    "SecurityOpt": [
+      "seccomp=unconfined"
+    ],
+    "NetworkMode": "host",
+    "PidMode": "host",
+    "Binds": [
+      "/var/run/docker.sock:/var/run/docker.sock:rw",
+      "/:/host:ro"
+    ]
+  },
+  "Mounts": [
+    {
+      "Source": "/var/run/docker.sock",
+      "Destination": "/var/run/docker.sock",
+      "Mode": "rw"
+    },
+    {
+      "Source": "/",
+      "Destination": "/host",
+      "Mode": "ro"
+    }
+  ]
+}

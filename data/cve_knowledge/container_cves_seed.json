@@ -1,0 +1,432 @@
+{
+  "schema_version": "cver-cve-knowledge-v1",
+  "records": [
+    {
+      "record_id": "cver-CVE-2024-21626",
+      "facts": {
+        "cve_id": "CVE-2024-21626",
+        "source": "seed/manual",
+        "title": "runc process.cwd container escape risk",
+        "component": "runc",
+        "description": "runc vulnerability class related to runtime file descriptor / cwd handling; relevant when affected runc version is present.",
+        "published": "2024-01-31T00:00:00Z",
+        "last_modified": "2024-02-01T00:00:00Z",
+        "severity": "HIGH",
+        "cvss": {
+          "version": "CVSSv3.1",
+          "score": 8.6,
+          "severity": "HIGH",
+          "vector": "unknown"
+        },
+        "cwe_ids": [
+          "CWE-200"
+        ],
+        "affected_products": [
+          "runc"
+        ],
+        "affected_version_ranges": [
+          {
+            "criteria": "runc < 1.1.12",
+            "vulnerable": true
+          }
+        ],
+        "fixed_versions": [
+          "1.1.12"
+        ],
+        "references": [
+          "https://github.com/opencontainers/runc/security/advisories/GHSA-xr7r-f8xq-vfvv"
+        ]
+      },
+      "semantic_annotations": {
+        "root_cause": "runtime_isolation",
+        "fine_type": "container_runtime_escape",
+        "attack_surface": "runtime",
+        "impact_boundary": "container_to_host",
+        "required_capability": "container_process_execution",
+        "escape_primitives": [
+          "runtime_boundary_break",
+          "host_filesystem_exposure"
+        ],
+        "mitigation_class": "runtime_patch_and_least_privilege",
+        "required_conditions": [
+          {
+            "name": "affected_runc_version",
+            "expr": "runtime.runc.version < 1.1.12",
+            "source_type": "manual_verified",
+            "confidence": 0.9,
+            "human_confirmed": true
+          },
+          {
+            "name": "runc_runtime_used",
+            "expr": "runtime.name contains runc",
+            "source_type": "rule_inferred",
+            "confidence": 0.8,
+            "human_confirmed": false
+          }
+        ],
+        "blocking_conditions": [
+          {
+            "name": "patched_runc",
+            "expr": "runtime.runc.version >= 1.1.12",
+            "source_type": "manual_verified",
+            "confidence": 0.9,
+            "human_confirmed": true
+          },
+          {
+            "name": "kata_boundary",
+            "expr": "runtime.kind == kata OR runtime.is_microvm == true",
+            "source_type": "rule_inferred",
+            "confidence": 0.6,
+            "human_confirmed": false
+          }
+        ],
+        "confidence": 0.86,
+        "human_confirmed": true
+      },
+      "evidence_sources": [
+        {
+          "source": "seed",
+          "url": "https://github.com/opencontainers/runc/security/advisories/GHSA-xr7r-f8xq-vfvv",
+          "retrieved_at": "2026-07-09T00:00:00Z"
+        }
+      ],
+      "redteam_mapping": [
+        {
+          "scenario_id": "runtime_version_exposure",
+          "trigger_reason": "runc runtime CVE",
+          "execution_level": "dry-run",
+          "poc_policy": "no_real_poc"
+        }
+      ]
+    },
+    {
+      "record_id": "cver-CVE-2022-0492",
+      "facts": {
+        "cve_id": "CVE-2022-0492",
+        "source": "seed/manual",
+        "title": "Linux cgroup release_agent container escape class",
+        "component": "linux_kernel",
+        "description": "Linux cgroup release_agent vulnerability class can be container-relevant when dangerous capabilities and cgroup write access are exposed.",
+        "published": "2022-02-04T00:00:00Z",
+        "last_modified": "2022-02-05T00:00:00Z",
+        "severity": "HIGH",
+        "cvss": {
+          "version": "CVSSv3.1",
+          "score": 7.8,
+          "severity": "HIGH",
+          "vector": "unknown"
+        },
+        "cwe_ids": [
+          "CWE-269"
+        ],
+        "affected_products": [
+          "linux_kernel",
+          "cgroup"
+        ],
+        "affected_version_ranges": [
+          {
+            "criteria": "affected Linux kernel versions",
+            "vulnerable": true
+          }
+        ],
+        "fixed_versions": [
+          "unknown"
+        ],
+        "references": [
+          "https://nvd.nist.gov/vuln/detail/CVE-2022-0492"
+        ]
+      },
+      "semantic_annotations": {
+        "root_cause": "kernel_attack_surface",
+        "fine_type": "cgroup_release_agent_escape",
+        "attack_surface": "cgroup",
+        "impact_boundary": "container_to_host",
+        "required_capability": "CAP_SYS_ADMIN_or_cgroup_write",
+        "escape_primitives": [
+          "namespace_or_cgroup_abuse",
+          "kernel_attack_surface"
+        ],
+        "mitigation_class": "capability_drop_cgroup_policy_kernel_patch",
+        "required_conditions": [
+          {
+            "name": "dangerous_capability",
+            "expr": "CAP_SYS_ADMIN in container.capabilities OR privileged == true",
+            "source_type": "manual_verified",
+            "confidence": 0.85,
+            "human_confirmed": true
+          },
+          {
+            "name": "cgroup_write",
+            "expr": "container can write relevant cgroup files",
+            "source_type": "rule_inferred",
+            "confidence": 0.7,
+            "human_confirmed": false
+          }
+        ],
+        "blocking_conditions": [
+          {
+            "name": "drop_cap_sys_admin",
+            "expr": "CAP_SYS_ADMIN not in capabilities AND privileged == false",
+            "source_type": "manual_verified",
+            "confidence": 0.8,
+            "human_confirmed": true
+          }
+        ],
+        "confidence": 0.8,
+        "human_confirmed": true
+      },
+      "evidence_sources": [
+        {
+          "source": "seed",
+          "url": "https://nvd.nist.gov/vuln/detail/CVE-2022-0492",
+          "retrieved_at": "2026-07-09T00:00:00Z"
+        }
+      ],
+      "redteam_mapping": [
+        {
+          "scenario_id": "privileged_container",
+          "trigger_reason": "cgroup escape requires dangerous privilege",
+          "execution_level": "dry-run",
+          "poc_policy": "no_real_poc"
+        }
+      ]
+    },
+    {
+      "record_id": "cver-CVE-2021-25741",
+      "facts": {
+        "cve_id": "CVE-2021-25741",
+        "source": "seed/manual",
+        "title": "Kubernetes subPath symlink exchange class",
+        "component": "kubernetes",
+        "description": "Kubernetes volume subPath handling issue can expose node filesystem under affected configurations.",
+        "published": "2021-09-13T00:00:00Z",
+        "last_modified": "2021-09-14T00:00:00Z",
+        "severity": "HIGH",
+        "cvss": {
+          "version": "CVSSv3.1",
+          "score": 8.8,
+          "severity": "HIGH",
+          "vector": "unknown"
+        },
+        "cwe_ids": [
+          "CWE-59"
+        ],
+        "affected_products": [
+          "kubernetes"
+        ],
+        "affected_version_ranges": [
+          {
+            "criteria": "affected Kubernetes versions",
+            "vulnerable": true
+          }
+        ],
+        "fixed_versions": [
+          "unknown"
+        ],
+        "references": [
+          "https://groups.google.com/g/kubernetes-security-announce/c/B1VegbBDMTE"
+        ]
+      },
+      "semantic_annotations": {
+        "root_cause": "orchestration_config",
+        "fine_type": "k8s_volume_hostpath_or_subpath",
+        "attack_surface": "kubernetes_volume",
+        "impact_boundary": "pod_to_node_filesystem",
+        "required_capability": "pod_create_or_update",
+        "escape_primitives": [
+          "host_filesystem_exposure"
+        ],
+        "mitigation_class": "k8s_policy_and_patch",
+        "required_conditions": [
+          {
+            "name": "uses_subpath_volume",
+            "expr": "pod.volumeMounts[*].subPath exists OR hostPath exists",
+            "source_type": "manual_verified",
+            "confidence": 0.8,
+            "human_confirmed": true
+          }
+        ],
+        "blocking_conditions": [
+          {
+            "name": "patched_kubelet",
+            "expr": "kubelet.version is patched",
+            "source_type": "manual_verified",
+            "confidence": 0.8,
+            "human_confirmed": true
+          }
+        ],
+        "confidence": 0.8,
+        "human_confirmed": true
+      },
+      "evidence_sources": [
+        {
+          "source": "seed",
+          "url": "https://groups.google.com/g/kubernetes-security-announce/c/B1VegbBDMTE",
+          "retrieved_at": "2026-07-09T00:00:00Z"
+        }
+      ],
+      "redteam_mapping": [
+        {
+          "scenario_id": "hostpath_mount",
+          "trigger_reason": "Kubernetes volume host exposure class",
+          "execution_level": "dry-run",
+          "poc_policy": "no_real_poc"
+        }
+      ]
+    },
+    {
+      "record_id": "cver-CONFIG-DOCKER-SOCK",
+      "facts": {
+        "cve_id": "CONFIG-DOCKER-SOCK",
+        "source": "seed/manual",
+        "title": "Docker socket mounted into container",
+        "component": "docker",
+        "description": "Mounting /var/run/docker.sock exposes Docker API control and can produce host-level impact.",
+        "published": "unknown",
+        "last_modified": "unknown",
+        "severity": "CRITICAL",
+        "cvss": {
+          "version": "policy",
+          "score": 9.0,
+          "severity": "CRITICAL",
+          "vector": "configuration"
+        },
+        "cwe_ids": [
+          "CWE-266"
+        ],
+        "affected_products": [
+          "docker"
+        ],
+        "affected_version_ranges": [],
+        "fixed_versions": [
+          "not_applicable"
+        ],
+        "references": []
+      },
+      "semantic_annotations": {
+        "root_cause": "misconfiguration_privilege",
+        "fine_type": "docker_socket_mount",
+        "attack_surface": "docker_api",
+        "impact_boundary": "container_to_host",
+        "required_capability": "docker_socket_access",
+        "escape_primitives": [
+          "docker_api_control"
+        ],
+        "mitigation_class": "deny_socket_mount",
+        "required_conditions": [
+          {
+            "name": "docker_socket_mounted",
+            "expr": "mounts contains /var/run/docker.sock",
+            "source_type": "manual_verified",
+            "confidence": 0.95,
+            "human_confirmed": true
+          }
+        ],
+        "blocking_conditions": [
+          {
+            "name": "no_docker_socket",
+            "expr": "mounts not contains /var/run/docker.sock",
+            "source_type": "manual_verified",
+            "confidence": 0.95,
+            "human_confirmed": true
+          }
+        ],
+        "confidence": 0.95,
+        "human_confirmed": true
+      },
+      "evidence_sources": [
+        {
+          "source": "seed",
+          "url": "internal://policy/docker-socket",
+          "retrieved_at": "2026-07-09T00:00:00Z"
+        }
+      ],
+      "redteam_mapping": [
+        {
+          "scenario_id": "docker_sock_mount",
+          "trigger_reason": "Docker socket exposure",
+          "execution_level": "dry-run",
+          "poc_policy": "no_real_poc"
+        }
+      ]
+    },
+    {
+      "record_id": "cver-CONFIG-CAP-SYS-ADMIN",
+      "facts": {
+        "cve_id": "CONFIG-CAP-SYS-ADMIN",
+        "source": "seed/manual",
+        "title": "Dangerous capability CAP_SYS_ADMIN",
+        "component": "docker",
+        "description": "Container has CAP_SYS_ADMIN or privileged mode, increasing kernel/cgroup/namespace attack surface.",
+        "published": "unknown",
+        "last_modified": "unknown",
+        "severity": "HIGH",
+        "cvss": {
+          "version": "policy",
+          "score": 8.0,
+          "severity": "HIGH",
+          "vector": "configuration"
+        },
+        "cwe_ids": [
+          "CWE-250"
+        ],
+        "affected_products": [
+          "docker",
+          "kubernetes"
+        ],
+        "affected_version_ranges": [],
+        "fixed_versions": [
+          "not_applicable"
+        ],
+        "references": []
+      },
+      "semantic_annotations": {
+        "root_cause": "misconfiguration_privilege",
+        "fine_type": "dangerous_capability",
+        "attack_surface": "capability",
+        "impact_boundary": "container_to_host",
+        "required_capability": "CAP_SYS_ADMIN",
+        "escape_primitives": [
+          "namespace_or_cgroup_abuse",
+          "ebpf_or_kernel_attack_surface"
+        ],
+        "mitigation_class": "drop_capabilities_seccomp_lsm",
+        "required_conditions": [
+          {
+            "name": "dangerous_capability",
+            "expr": "CAP_SYS_ADMIN in container.capabilities OR privileged == true",
+            "source_type": "manual_verified",
+            "confidence": 0.9,
+            "human_confirmed": true
+          }
+        ],
+        "blocking_conditions": [
+          {
+            "name": "drop_cap_sys_admin",
+            "expr": "CAP_SYS_ADMIN not in capabilities AND privileged == false",
+            "source_type": "manual_verified",
+            "confidence": 0.9,
+            "human_confirmed": true
+          }
+        ],
+        "confidence": 0.9,
+        "human_confirmed": true
+      },
+      "evidence_sources": [
+        {
+          "source": "seed",
+          "url": "internal://policy/cap-sys-admin",
+          "retrieved_at": "2026-07-09T00:00:00Z"
+        }
+      ],
+      "redteam_mapping": [
+        {
+          "scenario_id": "privileged_container",
+          "trigger_reason": "Dangerous container capability",
+          "execution_level": "dry-run",
+          "poc_policy": "no_real_poc"
+        }
+      ]
+    }
+  ]
+}

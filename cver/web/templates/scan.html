@@ -1,0 +1,9 @@
+{% extends "base.html" %}{% block content %}
+<h1>Scan Campaign</h1>
+<form method="post" action="/scan">
+<label>Target <input name="target" value="demo/nginx:lab"></label>
+<label>Kind <select name="target_kind"><option>image</option><option>container</option><option>pod</option><option>deployment</option></select></label>
+<label>Mode <select name="mode"><option>full-pipeline</option><option>scan-only</option><option>reason-only</option><option>redteam-only</option></select></label>
+<label>Profile <select name="profile"><option>demo</option><option>local</option><option>benchmark</option><option>test</option></select></label>
+<button type="submit">Run</button></form>
+{% endblock %}

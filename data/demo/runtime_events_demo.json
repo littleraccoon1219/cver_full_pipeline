@@ -1,0 +1,16 @@
+{
+  "events": [
+    {
+      "event_id": "evt-1",
+      "type": "process_exec",
+      "process": "nginx",
+      "risk": "low"
+    },
+    {
+      "event_id": "evt-2",
+      "type": "sensitive_mount_seen",
+      "path": "/var/run/docker.sock",
+      "risk": "high"
+    }
+  ]
+}

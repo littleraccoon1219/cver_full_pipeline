@@ -1,0 +1,7 @@
+{
+  "kind": "RuntimeClass",
+  "metadata": {
+    "name": "kata"
+  },
+  "handler": "kata"
+}

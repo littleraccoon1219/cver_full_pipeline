@@ -1,0 +1,14 @@
+{
+  "artifacts": [
+    {
+      "name": "runc",
+      "version": "1.1.10",
+      "type": "binary"
+    },
+    {
+      "name": "nginx",
+      "version": "1.21",
+      "type": "deb"
+    }
+  ]
+}

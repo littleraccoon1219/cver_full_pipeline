@@ -1,0 +1,160 @@
+{
+  "schema_version": "attack-scenario-dsl-v1",
+  "scenarios": [
+    {
+      "scenario_id": "docker_sock_mount",
+      "name": "Docker socket exposure probe",
+      "category": "misconfiguration",
+      "trigger_conditions": [
+        "mounts contains /var/run/docker.sock"
+      ],
+      "required_evidence": [
+        "evidence-docker-sock-mount"
+      ],
+      "allowed_execution_levels": [
+        "dry-run",
+        "safe-exec"
+      ],
+      "forbidden_actions": [
+        "arbitrary_shell",
+        "real_escape_poc",
+        "destructive_write"
+      ],
+      "expected_defense_points": [
+        "deny docker.sock mount",
+        "admission policy blocks hostPath docker.sock"
+      ],
+      "score_weight": 30,
+      "retest_logic": "rescan mounts and confirm docker.sock absent"
+    },
+    {
+      "scenario_id": "privileged_container",
+      "name": "Privileged container policy probe",
+      "category": "misconfiguration",
+      "trigger_conditions": [
+        "privileged == true OR CAP_SYS_ADMIN in capabilities"
+      ],
+      "required_evidence": [
+        "evidence-capabilities"
+      ],
+      "allowed_execution_levels": [
+        "dry-run",
+        "safe-exec"
+      ],
+      "forbidden_actions": [
+        "arbitrary_shell",
+        "kernel_exploit",
+        "destructive_write"
+      ],
+      "expected_defense_points": [
+        "privileged=false",
+        "drop CAP_SYS_ADMIN",
+        "seccomp default"
+      ],
+      "score_weight": 25,
+      "retest_logic": "rescan security context"
+    },
+    {
+      "scenario_id": "runtime_version_exposure",
+      "name": "Runtime version exposure probe",
+      "category": "runtime",
+      "trigger_conditions": [
+        "runtime version affected"
+      ],
+      "required_evidence": [
+        "evidence-runtime-runc-version"
+      ],
+      "allowed_execution_levels": [
+        "dry-run"
+      ],
+      "forbidden_actions": [
+        "real_escape_poc",
+        "exploit_generation",
+        "arbitrary_shell"
+      ],
+      "expected_defense_points": [
+        "patch runtime",
+        "use microVM runtime boundary",
+        "least privilege"
+      ],
+      "score_weight": 20,
+      "retest_logic": "confirm patched runtime version"
+    },
+    {
+      "scenario_id": "hostpath_mount",
+      "name": "HostPath exposure probe",
+      "category": "kubernetes",
+      "trigger_conditions": [
+        "hostPath exists OR host filesystem mounted"
+      ],
+      "required_evidence": [
+        "evidence-hostpath"
+      ],
+      "allowed_execution_levels": [
+        "dry-run",
+        "safe-exec"
+      ],
+      "forbidden_actions": [
+        "arbitrary_shell",
+        "host_file_write",
+        "real_escape_poc"
+      ],
+      "expected_defense_points": [
+        "deny hostPath",
+        "admission policy"
+      ],
+      "score_weight": 20,
+      "retest_logic": "rescan volumes"
+    },
+    {
+      "scenario_id": "ebpf_load_probe",
+      "name": "eBPF capability exposure probe",
+      "category": "kernel",
+      "trigger_conditions": [
+        "CAP_BPF or privileged or CAP_SYS_ADMIN"
+      ],
+      "required_evidence": [
+        "evidence-capabilities"
+      ],
+      "allowed_execution_levels": [
+        "dry-run"
+      ],
+      "forbidden_actions": [
+        "load_untrusted_bpf",
+        "kernel_exploit",
+        "arbitrary_shell"
+      ],
+      "expected_defense_points": [
+        "drop CAP_BPF",
+        "drop CAP_SYS_ADMIN",
+        "LSM enforcement"
+      ],
+      "score_weight": 15,
+      "retest_logic": "rescan capabilities and LSM"
+    },
+    {
+      "scenario_id": "kata_runtimeclass_probe",
+      "name": "Kata RuntimeClass boundary probe",
+      "category": "microvm",
+      "trigger_conditions": [
+        "runtimeClassName == kata"
+      ],
+      "required_evidence": [
+        "evidence-kata-runtimeclass"
+      ],
+      "allowed_execution_levels": [
+        "dry-run"
+      ],
+      "forbidden_actions": [
+        "vm_escape_poc",
+        "hypervisor_attack",
+        "arbitrary_shell"
+      ],
+      "expected_defense_points": [
+        "microVM boundary present"
+      ],
+      "score_weight": 15,
+      "retest_logic": "confirm RuntimeClass"
+    }
+  ]
+}

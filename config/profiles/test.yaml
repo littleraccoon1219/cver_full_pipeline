@@ -1,0 +1,32 @@
+{
+  "profile": "test",
+  "storage": {
+    "db_path": "data/test_cver_full_pipeline.db",
+    "output_dir": "outputs/test-runs"
+  },
+  "scanner": {
+    "backend_priority": [
+      "mock"
+    ],
+    "use_demo_data": true
+  },
+  "llm": {
+    "provider": "mock",
+    "mode": "hybrid"
+  },
+  "rag": {
+    "mode": "no-rag"
+  },
+  "redteam": {
+    "execution_level": "dry-run",
+    "require_human_confirm": false
+  },
+  "repair": {
+    "safe_apply": false,
+    "require_human_confirm": true
+  },
+  "policy": {
+    "require_lab_label": true,
+    "allow_public_targets": false
+  }
+}

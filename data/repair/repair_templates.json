@@ -1,0 +1,40 @@
+{
+  "templates": [
+    {
+      "template_id": "deny-docker-sock",
+      "match_fine_type": "docker_socket_mount",
+      "repair_class": "configuration",
+      "summary": "Remove /var/run/docker.sock mount from container or Pod manifest.",
+      "docker_hint": "Remove -v /var/run/docker.sock:/var/run/docker.sock.",
+      "k8s_patch_hint": "Remove hostPath volume path /var/run/docker.sock and its volumeMount.",
+      "retest": "Rescan mounts and confirm docker.sock evidence is absent."
+    },
+    {
+      "template_id": "drop-cap-sys-admin",
+      "match_fine_type": "dangerous_capability",
+      "repair_class": "configuration",
+      "summary": "Drop CAP_SYS_ADMIN and avoid privileged containers.",
+      "docker_hint": "Use --cap-drop=ALL and add only required capabilities.",
+      "k8s_patch_hint": "Set securityContext.privileged=false and drop ALL capabilities.",
+      "retest": "Rescan capabilities and seccomp profile."
+    },
+    {
+      "template_id": "patch-runtime",
+      "match_fine_type": "container_runtime_escape",
+      "repair_class": "runtime_upgrade",
+      "summary": "Upgrade affected container runtime to a fixed version.",
+      "docker_hint": "Upgrade runc/containerd/docker packages on host.",
+      "k8s_patch_hint": "Upgrade node runtime packages and roll nodes safely.",
+      "retest": "Confirm runtime version no longer matches vulnerable range."
+    },
+    {
+      "template_id": "restrict-hostpath",
+      "match_fine_type": "k8s_volume_hostpath_or_subpath",
+      "repair_class": "k8s_policy",
+      "summary": "Avoid hostPath/subPath exposure or enforce admission restrictions.",
+      "docker_hint": "Avoid host filesystem bind mounts.",
+      "k8s_patch_hint": "Deny hostPath with Pod Security Admission/Kyverno/Gatekeeper.",
+      "retest": "Rescan volumes and admission policy."
+    }
+  ]
+}

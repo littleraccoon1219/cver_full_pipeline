@@ -1,0 +1,22 @@
+{
+  "SchemaVersion": 2,
+  "ArtifactName": "demo/nginx:lab",
+  "Results": [
+    {
+      "Target": "runc",
+      "Class": "os-pkgs",
+      "Type": "library",
+      "Vulnerabilities": [
+        {
+          "VulnerabilityID": "CVE-2024-21626",
+          "PkgName": "runc",
+          "InstalledVersion": "1.1.10",
+          "FixedVersion": "1.1.12",
+          "Severity": "HIGH",
+          "Title": "runc container escape risk",
+          "Description": "Demo Trivy record."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "scanner": "mock-composite",
+  "target": {
+    "target_id": "target-demo-nginx",
+    "name": "demo/nginx:lab",
+    "kind": "image",
+    "labels": {
+      "cver-lab": "true"
+    }
+  },
+  "findings": [
+    {
+      "finding_id": "finding-cve-2024-21626",
+      "source": "trivy",
+      "type": "vulnerability",
+      "title": "CVE-2024-21626 in runc",
+      "description": "Demo vulnerability finding showing affected runc runtime condition.",
+      "severity": "HIGH",
+      "cve_id": "CVE-2024-21626",
+      "component": "runc",
+      "package_name": "runc",
+      "installed_version": "1.1.10",
+      "fixed_version": "1.1.12",
+      "evidence_refs": [
+        "evidence-runtime-runc-version"
+      ],
+      "confidence": 0.9,
+      "dedup_key": "CVE-2024-21626:runc"
+    },
+    {
+      "finding_id": "finding-docker-sock",
+      "source": "docker-inspect",
+      "type": "misconfiguration",
+      "title": "Docker socket mounted",
+      "description": "Container has /var/run/docker.sock mounted read-write.",
+      "severity": "CRITICAL",
+      "cve_id": "CONFIG-DOCKER-SOCK",
+      "component": "docker",
+      "package_name": "docker-runtime",
+      "installed_version": "unknown",
+      "fixed_version": "not_applicable",
+      "evidence_refs": [
+        "evidence-docker-sock-mount"
+      ],
+      "confidence": 0.98,
+      "dedup_key": "CONFIG-DOCKER-SOCK:/var/run/docker.sock"
+    },
+    {
+      "finding_id": "finding-cap-sys-admin",
+      "source": "docker-inspect",
+      "type": "misconfiguration",
+      "title": "Dangerous capability CAP_SYS_ADMIN",
+      "description": "Container is configured with CAP_SYS_ADMIN and seccomp unconfined in demo evidence.",
+      "severity": "HIGH",
+      "cve_id": "CONFIG-CAP-SYS-ADMIN",
+      "component": "docker",
+      "package_name": "container-config",
+      "installed_version": "unknown",
+      "fixed_version": "not_applicable",
+      "evidence_refs": [
+        "evidence-capabilities",
+        "evidence-seccomp"
+      ],
+      "confidence": 0.9,
+      "dedup_key": "CONFIG-CAP-SYS-ADMIN"
+    }
+  ]
+}

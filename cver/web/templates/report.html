@@ -1,0 +1,8 @@
+{% extends "base.html" %}{% block content %}
+<h1>Report</h1><p>Scan ID: <code>{{ payload.scan.scan_id }}</code></p><p class="score">Defense Score: {{ payload.defense_score.total_score }} / 100</p>
+<h2>Findings</h2><table><tr><th>Severity</th><th>Title</th><th>Type</th><th>Exploitability</th></tr>
+{% for f in payload.findings %}<tr><td>{{ f.severity }}</td><td>{{ f.title }}</td><td>{{ f.macro_type }}/{{ f.fine_type }}</td><td>{% for r in payload.exploitability_results %}{% if r.finding_id == f.finding_id %}{{ r.exploitability_label }}({{ r.exploitability_score }}){% endif %}{% endfor %}</td></tr>{% endfor %}</table>
+<h2>EscapeGraph</h2><pre>{{ payload.escape_graph.mermaid }}</pre>
+<h2>Repair</h2><pre>{{ payload.repair_plan | tojson(indent=2) }}</pre>
+<h2>Report Paths</h2><pre>{{ payload.report | tojson(indent=2) }}</pre>
+{% endblock %}

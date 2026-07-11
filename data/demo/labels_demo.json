@@ -1,0 +1,34 @@
+{
+  "schema_version": "labelset-v1",
+  "cases": [
+    {
+      "case_id": "case-demo-nginx",
+      "target": "demo/nginx:lab",
+      "expected": {
+        "macro_types": [
+          "runtime",
+          "misconfiguration"
+        ],
+        "fine_types": [
+          "container_runtime_escape",
+          "docker_socket_mount",
+          "dangerous_capability"
+        ],
+        "exploitability_labels": [
+          "likely_exploitable",
+          "confirmed_exploitable"
+        ],
+        "redteam_scenarios": [
+          "runtime_version_exposure",
+          "docker_sock_mount",
+          "privileged_container"
+        ],
+        "repair_expected": [
+          "patch-runtime",
+          "deny-docker-sock",
+          "drop-cap-sys-admin"
+        ]
+      }
+    }
+  ]
+}
