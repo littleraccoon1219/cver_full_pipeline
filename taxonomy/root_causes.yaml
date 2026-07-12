@@ -1,0 +1,207 @@
+taxonomy_id: cver-root-cause
+version: 0.1.0
+language_policy: canonical_codes_en_bilingual_labels
+categories:
+  - code: RC-1
+    name_en: Implementation Correctness Failure
+    name_zh: 实现正确性失效
+    definition: 单个组件对内存、输入、状态、并发或资源生命周期的实现不满足安全不变量。
+    children:
+      - code: RC-1.1
+        name_en: Memory and Numeric Error
+        name_zh: 内存与数值计算错误
+        definition: 内存访问、释放、类型或数值计算错误形成利用原语。
+        include: [out-of-bounds, use-after-free, integer-overflow, type-confusion]
+        exclude: [shared-cache-side-channel, resource-quota-misconfiguration]
+      - code: RC-1.2
+        name_en: Input Parsing and Canonicalization Error
+        name_zh: 输入解析与规范化错误
+        definition: 输入、路径、镜像、协议或配置解析与规范化不正确。
+        include: [path-traversal, command-injection, unsafe-deserialization, ambiguous-parsing]
+        exclude: [untrusted-image-admission, rbac-overpermission]
+      - code: RC-1.3
+        name_en: Concurrency and Ordering Error
+        name_zh: 并发、时序与原子性错误
+        definition: 检查、使用、初始化或状态更新之间的顺序与同步错误。
+        include: [race-condition, toctou, non-atomic-update]
+        exclude: [cross-component-state-semantic-mismatch]
+      - code: RC-1.4
+        name_en: State Management Error
+        name_zh: 状态管理错误
+        definition: 组件内部状态机、缓存、初始化或恢复过程不正确。
+        include: [invalid-state-transition, stale-cache, incomplete-initialization]
+        exclude: [host-guest-state-disagreement]
+      - code: RC-1.5
+        name_en: Resource and Object Lifecycle Error
+        name_zh: 资源与对象生命周期错误
+        definition: 文件描述符、挂载点、进程、句柄或临时资源创建、继承和销毁错误。
+        include: [file-descriptor-leak, stale-handle, incomplete-cleanup]
+        exclude: [quota-policy-missing]
+      - code: RC-1.6
+        name_en: Exception Handling and Recovery Error
+        name_zh: 异常处理与错误恢复错误
+        definition: 异常路径、回滚或失败恢复不完整并留下不安全状态。
+        include: [incomplete-rollback, ignored-error, unsafe-recovery]
+        exclude: [intentional-fail-open-policy]
+
+  - code: RC-2
+    name_en: Isolation and Resource Boundary Failure
+    name_zh: 隔离与资源边界失效
+    definition: 本应相互隔离的执行域、资源域、租户域或硬件状态发生非预期共享或越界。
+    children:
+      - code: RC-2.1
+        name_en: Namespace and Process Boundary Failure
+        name_zh: Namespace与进程边界失效
+        definition: 进程、用户、网络、IPC或其他命名空间隔离不完整或被绕过。
+        include: [namespace-leak, uid-map-bypass, process-visibility]
+        exclude: [rbac-overpermission]
+      - code: RC-2.2
+        name_en: Filesystem Mount and Device Boundary Failure
+        name_zh: 文件系统、挂载与设备边界失效
+        definition: 宿主文件、挂载点、设备或套接字被错误暴露给隔离域。
+        include: [host-filesystem-exposure, device-exposure, mount-boundary-bypass]
+        exclude: [operator-configured-hostpath]
+      - code: RC-2.3
+        name_en: Syscall and Kernel Attack-Surface Boundary Failure
+        name_zh: 系统调用与内核攻击面边界失效
+        definition: 工作负载获得了超出预期的宿主内核接口或系统调用攻击面。
+        include: [syscall-filter-bypass, kernel-interface-exposure]
+        exclude: [seccomp-policy-not-configured]
+      - code: RC-2.4
+        name_en: Resource Accounting and Quota Boundary Failure
+        name_zh: 资源计量与配额边界失效
+        definition: CPU、内存、PID、磁盘或网络资源未被正确隔离、计量或约束。
+        include: [cgroup-bypass, cross-tenant-resource-exhaustion]
+        exclude: [operator-omitted-resource-limit]
+      - code: RC-2.5
+        name_en: Guest Host and Virtual Device Boundary Failure
+        name_zh: Guest—Host与虚拟设备边界失效
+        definition: microVM、VMM、共享文件系统或虚拟设备没有维持Guest与Host隔离。
+        include: [vmm-escape, virtio-boundary-bypass, shared-fs-escape]
+        exclude: [host-agent-semantic-privilege-amplification]
+      - code: RC-2.6
+        name_en: Hardware and Microarchitectural Sharing Failure
+        name_zh: 硬件与微架构共享状态失效
+        definition: 缓存、分支预测、SMT、DMA或其他硬件共享状态泄露或干扰安全域。
+        include: [cache-side-channel, speculative-execution, dma-isolation-failure]
+        exclude: [software-out-of-bounds-access]
+
+  - code: RC-3
+    name_en: Privilege and Security Policy Failure
+    name_zh: 权限与安全策略失效
+    definition: 身份、权限、策略或安全默认值的定义、配置或执行不符合最小权限原则。
+    children:
+      - code: RC-3.1
+        name_en: Authentication and Identity Mapping Error
+        name_zh: 身份认证与身份映射错误
+        definition: 身份认证、主体绑定或跨域身份映射不正确。
+        include: [authentication-bypass, uid-gid-mapping-error]
+        exclude: [authorization-policy-overpermission]
+      - code: RC-3.2
+        name_en: Authorization and RBAC Error
+        name_zh: 授权与RBAC错误
+        definition: API、对象或集群权限检查缺失、错误或授权范围过大。
+        include: [missing-authorization, rbac-overpermission, service-account-abuse]
+        exclude: [capability-overgrant]
+      - code: RC-3.3
+        name_en: Capability and Privilege Management Error
+        name_zh: Capability与特权管理错误
+        definition: Linux Capability、特权容器或宿主权限被错误授予或继承。
+        include: [privileged-container, cap-sys-admin, privilege-inheritance]
+        exclude: [namespace-implementation-bypass]
+      - code: RC-3.4
+        name_en: Security Policy Absence or Enforcement Failure
+        name_zh: 安全策略缺失或执行失效
+        definition: seccomp、LSM、NetworkPolicy、Admission等策略缺失、未加载或未执行。
+        include: [seccomp-disabled, admission-bypass, policy-fail-open]
+        exclude: [policy-parser-memory-corruption]
+      - code: RC-3.5
+        name_en: Insecure Default
+        name_zh: 不安全默认值
+        definition: 产品默认配置在常规部署下授予过多权限或暴露危险接口。
+        include: [anonymous-access-default, unsafe-listen-default]
+        exclude: [operator-overrides-secure-default]
+      - code: RC-3.6
+        name_en: Operator Misconfiguration
+        name_zh: 操作者错误配置
+        definition: 管理员或部署者设置了超出业务需要的权限、挂载、网络或策略。
+        include: [docker-socket-mount, hostpath-root, hostpid, missing-resource-limit]
+        exclude: [product-code-authorization-bug]
+
+  - code: RC-4
+    name_en: Trust and Integrity Failure
+    name_zh: 信任与完整性失效
+    definition: 系统错误信任了镜像、制品、依赖、凭据、更新或证明材料。
+    children:
+      - code: RC-4.1
+        name_en: Image and Artifact Integrity Failure
+        name_zh: 镜像与制品完整性失效
+        definition: 镜像或制品来源、摘要、签名或内容完整性未被正确验证。
+        include: [unsigned-image, mutable-tag, digest-not-pinned]
+        exclude: [image-parser-memory-corruption]
+      - code: RC-4.2
+        name_en: Registry and Distribution Trust Failure
+        name_zh: Registry与分发链信任失效
+        definition: Registry、镜像传输、代理或分发过程的信任边界不正确。
+        include: [untrusted-registry, distribution-tampering, tls-validation-error]
+        exclude: [rbac-registry-permission]
+      - code: RC-4.3
+        name_en: Dependency Build and Supply-Chain Failure
+        name_zh: 依赖、构建与供应链失效
+        definition: 依赖解析、构建环境、插件或发布流水线被污染或无法证明来源。
+        include: [dependency-confusion, compromised-builder, malicious-plugin]
+        exclude: [runtime-container-escape]
+      - code: RC-4.4
+        name_en: Credential Key and Certificate Failure
+        name_zh: 凭据、密钥与证书信任失效
+        definition: Secret、密钥、令牌和证书的存储、分发、轮换或验证错误。
+        include: [secret-exposure, certificate-validation-error, token-scope-error]
+        exclude: [service-account-rbac-overpermission]
+      - code: RC-4.5
+        name_en: Update Provenance and Attestation Failure
+        name_zh: 更新、来源证明与Attestation失效
+        definition: 更新、SBOM、VEX、provenance或远程证明结果缺失、失真或未校验。
+        include: [unverified-update, provenance-missing, attestation-bypass]
+        exclude: [update-parser-implementation-bug]
+
+  - code: RC-5
+    name_en: Cross-Layer Interaction and Semantic Failure
+    name_zh: 跨层交互与语义失配
+    definition: 多个组件对身份、权限、路径、状态、生命周期或操作语义理解不一致，组合后产生安全缺陷。
+    children:
+      - code: RC-5.1
+        name_en: Identity and Privilege Semantic Mismatch
+        name_zh: 身份与权限语义失配
+        definition: Host、Guest、Kubernetes和Runtime对主体身份或权限含义理解不同。
+        include: [cross-layer-uid-mismatch, privilege-translation-error]
+        exclude: [single-component-authentication-bypass]
+      - code: RC-5.2
+        name_en: Path Mount and File Semantic Mismatch
+        name_zh: 路径、挂载与文件语义失配
+        definition: 不同层对路径根、符号链接、挂载或文件属性解释不一致。
+        include: [host-guest-path-mismatch, cri-oci-mount-translation-error]
+        exclude: [single-parser-path-traversal]
+      - code: RC-5.3
+        name_en: Lifecycle and State Synchronization Mismatch
+        name_zh: 生命周期与状态同步失配
+        definition: kubelet、shim、runtime、agent或VMM对对象状态与生命周期认识不一致。
+        include: [stale-runtime-state, deletion-state-race-across-components]
+        exclude: [single-component-state-machine-error]
+      - code: RC-5.4
+        name_en: Operation Forwarding and Privilege Amplification
+        name_zh: 操作转发与权限放大
+        definition: 低权限域请求经代理或Agent转发后以更高宿主权限执行。
+        include: [host-agent-forwarding-abuse, privileged-proxy-confused-deputy]
+        exclude: [direct-host-authorization-bypass]
+      - code: RC-5.5
+        name_en: API Protocol and Version Semantic Mismatch
+        name_zh: API、协议与版本语义失配
+        definition: CRI、OCI、CNI、CSI或版本兼容层对字段和协议含义解释不一致。
+        include: [field-translation-error, incompatible-security-default]
+        exclude: [malformed-input-parser-bug]
+      - code: RC-5.6
+        name_en: Check Execution Layer Separation
+        name_zh: 检查层与执行层分离
+        definition: 安全检查与实际执行发生在不同组件或信任域，检查结果无法约束执行对象。
+        include: [check-use-cross-layer-gap, validation-execution-disagreement]
+        exclude: [single-process-toctou]

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cver.local/schemas/evidence.schema.json",
+  "title": "CVER Evidence Fragment",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["evidence_id", "source_id", "snapshot_id", "locator", "excerpt", "evidence_level", "content_hash"],
+  "properties": {
+    "evidence_id": {"type": "string", "minLength": 1},
+    "source_id": {"type": "string", "minLength": 1},
+    "snapshot_id": {"type": "string", "minLength": 1},
+    "locator": {"type": "string", "minLength": 1},
+    "excerpt": {"type": "string", "minLength": 1},
+    "evidence_level": {"enum": ["E0", "E1", "E2", "E3", "E4"]},
+    "content_hash": {"type": "string", "pattern": "^[a-fA-F0-9]{32,128}$"},
+    "language": {"type": "string", "default": "en"},
+    "metadata": {"type": "object"}
+  }
+}
