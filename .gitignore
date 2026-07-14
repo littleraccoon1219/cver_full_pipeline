@@ -1,0 +1,25 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Runtime data
+data/*.db
+data/*.db-*
+data/raw/
+data/staging/
+data/review/
+data/experiments/
+data/releases/
+
+# Generated outputs
+outputs/
+logs/
+
+# Secrets
+.env
+*.key
