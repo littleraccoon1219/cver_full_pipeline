@@ -1,28 +1,17 @@
-from __future__ import annotations
+-- CVER Trusted Knowledge Base formal research schema
+-- Schema version: 1.0.0
+-- Generated from cver/knowledge/schema.py
+PRAGMA foreign_keys = ON;
+PRAGMA journal_mode = WAL;
 
-import sqlite3
-from contextlib import contextmanager
-from pathlib import Path
-from typing import Iterator
-
-SCHEMA_VERSION = "1.0.0"
-
-# The formal research schema is intentionally split by research concern.  Existing MVP
-# table names are preserved so old collectors/repositories continue to work, while the
-# formal tables add normalization, provenance, conflict resolution, attack chains,
-# reproducible experiments, remediation/retest, and release governance.
-DDL = [
-    # ------------------------------------------------------------------ governance
-    """
-    CREATE TABLE IF NOT EXISTS kb_schema_migrations(
+CREATE TABLE IF NOT EXISTS kb_schema_migrations(
         version TEXT PRIMARY KEY,
         applied_at TEXT NOT NULL,
         checksum TEXT,
         notes TEXT
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_actors(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_actors(
         actor_id TEXT PRIMARY KEY,
         actor_type TEXT NOT NULL CHECK(actor_type IN ('human','system','model','organization')),
         display_name TEXT NOT NULL,
@@ -33,10 +22,9 @@ DDL = [
         active INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1)),
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_ingestion_runs(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_ingestion_runs(
         ingestion_run_id TEXT PRIMARY KEY,
         collector_name TEXT NOT NULL,
         collector_version TEXT NOT NULL,
@@ -49,10 +37,9 @@ DDL = [
         stats_json TEXT NOT NULL DEFAULT '{}',
         error_json TEXT NOT NULL DEFAULT '{}',
         FOREIGN KEY(requested_by) REFERENCES kb_actors(actor_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_ingestion_items(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_ingestion_items(
         ingestion_item_id TEXT PRIMARY KEY,
         ingestion_run_id TEXT NOT NULL,
         external_key TEXT,
@@ -65,10 +52,9 @@ DDL = [
         updated_at TEXT NOT NULL,
         UNIQUE(ingestion_run_id, external_key),
         FOREIGN KEY(ingestion_run_id) REFERENCES kb_ingestion_runs(ingestion_run_id) ON DELETE CASCADE
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_audit_events(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_audit_events(
         audit_event_id INTEGER PRIMARY KEY AUTOINCREMENT,
         occurred_at TEXT NOT NULL,
         actor_id TEXT,
@@ -81,12 +67,9 @@ DDL = [
         correlation_id TEXT,
         metadata_json TEXT NOT NULL DEFAULT '{}',
         FOREIGN KEY(actor_id) REFERENCES kb_actors(actor_id)
-    )
-    """,
+    );
 
-    # ------------------------------------------------------------------- taxonomy
-    """
-    CREATE TABLE IF NOT EXISTS kb_taxonomy_versions(
+CREATE TABLE IF NOT EXISTS kb_taxonomy_versions(
         taxonomy_version TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         description TEXT,
@@ -96,10 +79,9 @@ DDL = [
         created_by TEXT,
         created_at TEXT NOT NULL,
         FOREIGN KEY(created_by) REFERENCES kb_actors(actor_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_taxonomy_nodes(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_taxonomy_nodes(
         taxonomy_node_id TEXT PRIMARY KEY,
         taxonomy_version TEXT NOT NULL,
         taxonomy_name TEXT NOT NULL,
@@ -119,10 +101,9 @@ DDL = [
         UNIQUE(taxonomy_version, taxonomy_name, code),
         FOREIGN KEY(taxonomy_version) REFERENCES kb_taxonomy_versions(taxonomy_version),
         FOREIGN KEY(parent_node_id) REFERENCES kb_taxonomy_nodes(taxonomy_node_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_taxonomy_edges(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_taxonomy_edges(
         taxonomy_edge_id TEXT PRIMARY KEY,
         taxonomy_version TEXT NOT NULL,
         source_node_id TEXT NOT NULL,
@@ -134,12 +115,9 @@ DDL = [
         FOREIGN KEY(taxonomy_version) REFERENCES kb_taxonomy_versions(taxonomy_version),
         FOREIGN KEY(source_node_id) REFERENCES kb_taxonomy_nodes(taxonomy_node_id),
         FOREIGN KEY(target_node_id) REFERENCES kb_taxonomy_nodes(taxonomy_node_id)
-    )
-    """,
+    );
 
-    # --------------------------------------------------------------- core entities
-    """
-    CREATE TABLE IF NOT EXISTS kb_records(
+CREATE TABLE IF NOT EXISTS kb_records(
         record_id TEXT PRIMARY KEY,
         record_type TEXT NOT NULL CHECK(record_type IN ('vulnerability','misconfiguration','attack_pattern','supply_chain_incident')),
         external_id TEXT,
@@ -163,14 +141,17 @@ DDL = [
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         FOREIGN KEY(taxonomy_version) REFERENCES kb_taxonomy_versions(taxonomy_version)
-    )
-    """,
-    "CREATE UNIQUE INDEX IF NOT EXISTS idx_kb_records_external ON kb_records(record_type, external_id) WHERE external_id IS NOT NULL AND external_id <> ''",
-    "CREATE UNIQUE INDEX IF NOT EXISTS idx_kb_records_canonical ON kb_records(canonical_key) WHERE canonical_key IS NOT NULL AND canonical_key <> ''",
-    "CREATE INDEX IF NOT EXISTS idx_kb_records_taxonomy ON kb_records(root_cause_l1, root_cause_l2)",
-    "CREATE INDEX IF NOT EXISTS idx_kb_records_status_type ON kb_records(status, record_type)",
-    """
-    CREATE TABLE IF NOT EXISTS kb_record_identifiers(
+    );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_kb_records_external ON kb_records(record_type, external_id) WHERE external_id IS NOT NULL AND external_id <> '';
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_kb_records_canonical ON kb_records(canonical_key) WHERE canonical_key IS NOT NULL AND canonical_key <> '';
+
+CREATE INDEX IF NOT EXISTS idx_kb_records_taxonomy ON kb_records(root_cause_l1, root_cause_l2);
+
+CREATE INDEX IF NOT EXISTS idx_kb_records_status_type ON kb_records(status, record_type);
+
+CREATE TABLE IF NOT EXISTS kb_record_identifiers(
         identifier_id TEXT PRIMARY KEY,
         record_id TEXT NOT NULL,
         scheme TEXT NOT NULL,
@@ -182,10 +163,9 @@ DDL = [
         metadata_json TEXT NOT NULL DEFAULT '{}',
         UNIQUE(scheme, identifier_value),
         FOREIGN KEY(record_id) REFERENCES kb_records(record_id) ON DELETE CASCADE
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_record_revisions(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_record_revisions(
         revision_id INTEGER PRIMARY KEY AUTOINCREMENT,
         record_id TEXT NOT NULL,
         revision_no INTEGER NOT NULL,
@@ -196,10 +176,9 @@ DDL = [
         created_at TEXT NOT NULL,
         UNIQUE(record_id, revision_no),
         FOREIGN KEY(record_id) REFERENCES kb_records(record_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_record_relations(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_record_relations(
         relation_id TEXT PRIMARY KEY,
         source_record_id TEXT NOT NULL,
         target_record_id TEXT NOT NULL,
@@ -216,10 +195,9 @@ DDL = [
         FOREIGN KEY(source_record_id) REFERENCES kb_records(record_id),
         FOREIGN KEY(target_record_id) REFERENCES kb_records(record_id),
         FOREIGN KEY(created_by) REFERENCES kb_actors(actor_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_products(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_products(
         product_id TEXT PRIMARY KEY,
         vendor TEXT,
         product_name TEXT NOT NULL,
@@ -229,10 +207,9 @@ DDL = [
         homepage_url TEXT,
         metadata_json TEXT NOT NULL DEFAULT '{}',
         UNIQUE(vendor, product_name, ecosystem)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_components(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_components(
         component_id TEXT PRIMARY KEY,
         product_id TEXT,
         component_name TEXT NOT NULL,
@@ -243,10 +220,9 @@ DDL = [
         metadata_json TEXT NOT NULL DEFAULT '{}',
         UNIQUE(product_id, component_name),
         FOREIGN KEY(product_id) REFERENCES kb_products(product_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_record_components(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_record_components(
         record_component_id TEXT PRIMARY KEY,
         record_id TEXT NOT NULL,
         component_id TEXT NOT NULL,
@@ -257,10 +233,9 @@ DDL = [
         UNIQUE(record_id, component_id, relationship_type),
         FOREIGN KEY(record_id) REFERENCES kb_records(record_id) ON DELETE CASCADE,
         FOREIGN KEY(component_id) REFERENCES kb_components(component_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_version_ranges(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_version_ranges(
         version_range_id TEXT PRIMARY KEY,
         record_component_id TEXT NOT NULL,
         range_type TEXT NOT NULL CHECK(range_type IN ('affected','unaffected','fixed','introduced','unknown')),
@@ -274,10 +249,9 @@ DDL = [
         assertion_id TEXT,
         metadata_json TEXT NOT NULL DEFAULT '{}',
         FOREIGN KEY(record_component_id) REFERENCES kb_record_components(record_component_id) ON DELETE CASCADE
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_record_taxonomy_assignments(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_record_taxonomy_assignments(
         assignment_id TEXT PRIMARY KEY,
         record_id TEXT NOT NULL,
         taxonomy_node_id TEXT NOT NULL,
@@ -292,10 +266,9 @@ DDL = [
         FOREIGN KEY(record_id) REFERENCES kb_records(record_id) ON DELETE CASCADE,
         FOREIGN KEY(taxonomy_node_id) REFERENCES kb_taxonomy_nodes(taxonomy_node_id),
         FOREIGN KEY(assigned_by) REFERENCES kb_actors(actor_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_external_taxonomy_mappings(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_external_taxonomy_mappings(
         mapping_id TEXT PRIMARY KEY,
         taxonomy_node_id TEXT NOT NULL,
         external_system TEXT NOT NULL,
@@ -306,12 +279,9 @@ DDL = [
         metadata_json TEXT NOT NULL DEFAULT '{}',
         UNIQUE(taxonomy_node_id, external_system, external_code, relation_type),
         FOREIGN KEY(taxonomy_node_id) REFERENCES kb_taxonomy_nodes(taxonomy_node_id)
-    )
-    """,
+    );
 
-    # ----------------------------------------------------------- sources and claims
-    """
-    CREATE TABLE IF NOT EXISTS kb_sources(
+CREATE TABLE IF NOT EXISTS kb_sources(
         source_id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         source_type TEXT NOT NULL,
@@ -323,10 +293,9 @@ DDL = [
         metadata_json TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_source_snapshots(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_source_snapshots(
         snapshot_id TEXT PRIMARY KEY,
         source_id TEXT NOT NULL,
         content_hash TEXT NOT NULL,
@@ -336,10 +305,9 @@ DDL = [
         metadata_json TEXT NOT NULL,
         UNIQUE(source_id, content_hash),
         FOREIGN KEY(source_id) REFERENCES kb_sources(source_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_evidence_fragments(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_evidence_fragments(
         evidence_id TEXT PRIMARY KEY,
         source_id TEXT NOT NULL,
         snapshot_id TEXT NOT NULL,
@@ -356,10 +324,9 @@ DDL = [
         UNIQUE(snapshot_id, locator, content_hash),
         FOREIGN KEY(source_id) REFERENCES kb_sources(source_id),
         FOREIGN KEY(snapshot_id) REFERENCES kb_source_snapshots(snapshot_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_assertions(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_assertions(
         assertion_id TEXT PRIMARY KEY,
         record_id TEXT NOT NULL,
         predicate TEXT NOT NULL,
@@ -377,11 +344,11 @@ DDL = [
         updated_at TEXT NOT NULL,
         FOREIGN KEY(record_id) REFERENCES kb_records(record_id),
         FOREIGN KEY(supersedes_assertion_id) REFERENCES kb_assertions(assertion_id)
-    )
-    """,
-    "CREATE INDEX IF NOT EXISTS idx_kb_assertions_record_predicate ON kb_assertions(record_id, predicate)",
-    """
-    CREATE TABLE IF NOT EXISTS kb_assertion_revisions(
+    );
+
+CREATE INDEX IF NOT EXISTS idx_kb_assertions_record_predicate ON kb_assertions(record_id, predicate);
+
+CREATE TABLE IF NOT EXISTS kb_assertion_revisions(
         assertion_revision_id INTEGER PRIMARY KEY AUTOINCREMENT,
         assertion_id TEXT NOT NULL,
         revision_no INTEGER NOT NULL,
@@ -392,10 +359,9 @@ DDL = [
         created_at TEXT NOT NULL,
         UNIQUE(assertion_id, revision_no),
         FOREIGN KEY(assertion_id) REFERENCES kb_assertions(assertion_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_assertion_evidence(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_assertion_evidence(
         assertion_id TEXT NOT NULL,
         evidence_id TEXT NOT NULL,
         support_type TEXT NOT NULL DEFAULT 'supports' CHECK(support_type IN ('supports','contradicts','qualifies','context')),
@@ -404,10 +370,9 @@ DDL = [
         PRIMARY KEY(assertion_id, evidence_id),
         FOREIGN KEY(assertion_id) REFERENCES kb_assertions(assertion_id) ON DELETE CASCADE,
         FOREIGN KEY(evidence_id) REFERENCES kb_evidence_fragments(evidence_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_assertion_conflicts(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_assertion_conflicts(
         conflict_id TEXT PRIMARY KEY,
         record_id TEXT NOT NULL,
         predicate TEXT NOT NULL,
@@ -421,20 +386,18 @@ DDL = [
         metadata_json TEXT NOT NULL DEFAULT '{}',
         FOREIGN KEY(record_id) REFERENCES kb_records(record_id),
         FOREIGN KEY(detected_by) REFERENCES kb_actors(actor_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_conflict_assertions(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_conflict_assertions(
         conflict_id TEXT NOT NULL,
         assertion_id TEXT NOT NULL,
         conflict_role TEXT NOT NULL CHECK(conflict_role IN ('claim_a','claim_b','supporting','contradicting','context')),
         PRIMARY KEY(conflict_id, assertion_id),
         FOREIGN KEY(conflict_id) REFERENCES kb_assertion_conflicts(conflict_id) ON DELETE CASCADE,
         FOREIGN KEY(assertion_id) REFERENCES kb_assertions(assertion_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_conflict_resolutions(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_conflict_resolutions(
         resolution_id TEXT PRIMARY KEY,
         conflict_id TEXT NOT NULL,
         decision TEXT NOT NULL,
@@ -447,12 +410,9 @@ DDL = [
         FOREIGN KEY(selected_assertion_id) REFERENCES kb_assertions(assertion_id),
         FOREIGN KEY(resolution_evidence_id) REFERENCES kb_evidence_fragments(evidence_id),
         FOREIGN KEY(resolved_by) REFERENCES kb_actors(actor_id)
-    )
-    """,
+    );
 
-    # ---------------------------------------------------- annotation and review flow
-    """
-    CREATE TABLE IF NOT EXISTS kb_annotation_tasks(
+CREATE TABLE IF NOT EXISTS kb_annotation_tasks(
         annotation_task_id TEXT PRIMARY KEY,
         record_id TEXT NOT NULL,
         task_type TEXT NOT NULL,
@@ -465,10 +425,9 @@ DDL = [
         updated_at TEXT NOT NULL,
         FOREIGN KEY(record_id) REFERENCES kb_records(record_id),
         FOREIGN KEY(assigned_to) REFERENCES kb_actors(actor_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_annotation_decisions(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_annotation_decisions(
         annotation_decision_id TEXT PRIMARY KEY,
         annotation_task_id TEXT NOT NULL,
         record_id TEXT NOT NULL,
@@ -483,10 +442,9 @@ DDL = [
         FOREIGN KEY(annotation_task_id) REFERENCES kb_annotation_tasks(annotation_task_id),
         FOREIGN KEY(record_id) REFERENCES kb_records(record_id),
         FOREIGN KEY(decided_by) REFERENCES kb_actors(actor_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_annotation_rechecks(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_annotation_rechecks(
         recheck_id TEXT PRIMARY KEY,
         record_id TEXT NOT NULL,
         original_decision_id TEXT,
@@ -500,10 +458,9 @@ DDL = [
         FOREIGN KEY(record_id) REFERENCES kb_records(record_id),
         FOREIGN KEY(original_decision_id) REFERENCES kb_annotation_decisions(annotation_decision_id),
         FOREIGN KEY(rechecked_by) REFERENCES kb_actors(actor_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_gold_admission_reviews(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_gold_admission_reviews(
         gold_review_id TEXT PRIMARY KEY,
         record_id TEXT NOT NULL,
         validator_version TEXT NOT NULL,
@@ -516,12 +473,9 @@ DDL = [
         created_at TEXT NOT NULL,
         FOREIGN KEY(record_id) REFERENCES kb_records(record_id),
         FOREIGN KEY(reviewed_by) REFERENCES kb_actors(actor_id)
-    )
-    """,
+    );
 
-    # -------------------------------------------------------- environment and rules
-    """
-    CREATE TABLE IF NOT EXISTS kb_environments(
+CREATE TABLE IF NOT EXISTS kb_environments(
         environment_id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         environment_type TEXT NOT NULL DEFAULT 'profile' CHECK(environment_type IN ('profile','baseline','vulnerable','fixed','negative','unknown')),
@@ -533,10 +487,9 @@ DDL = [
         content_hash TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_environment_snapshots(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_environment_snapshots(
         environment_snapshot_id TEXT PRIMARY KEY,
         environment_id TEXT NOT NULL,
         parent_snapshot_id TEXT,
@@ -552,10 +505,9 @@ DDL = [
         FOREIGN KEY(environment_id) REFERENCES kb_environments(environment_id),
         FOREIGN KEY(parent_snapshot_id) REFERENCES kb_environment_snapshots(environment_snapshot_id),
         FOREIGN KEY(captured_by) REFERENCES kb_actors(actor_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_environment_facts(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_environment_facts(
         environment_fact_id TEXT PRIMARY KEY,
         environment_snapshot_id TEXT NOT NULL,
         fact_path TEXT NOT NULL,
@@ -570,10 +522,9 @@ DDL = [
         UNIQUE(environment_snapshot_id, fact_path),
         FOREIGN KEY(environment_snapshot_id) REFERENCES kb_environment_snapshots(environment_snapshot_id) ON DELETE CASCADE,
         FOREIGN KEY(source_evidence_id) REFERENCES kb_evidence_fragments(evidence_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_environment_relations(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_environment_relations(
         environment_relation_id TEXT PRIMARY KEY,
         source_environment_id TEXT NOT NULL,
         target_environment_id TEXT NOT NULL,
@@ -582,10 +533,9 @@ DDL = [
         UNIQUE(source_environment_id, target_environment_id, relation_type),
         FOREIGN KEY(source_environment_id) REFERENCES kb_environments(environment_id),
         FOREIGN KEY(target_environment_id) REFERENCES kb_environments(environment_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_rules(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_rules(
         rule_id TEXT NOT NULL,
         version TEXT NOT NULL,
         record_id TEXT NOT NULL,
@@ -603,10 +553,9 @@ DDL = [
         PRIMARY KEY(rule_id, version),
         FOREIGN KEY(record_id) REFERENCES kb_records(record_id),
         FOREIGN KEY(created_by) REFERENCES kb_actors(actor_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_rule_evidence(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_rule_evidence(
         rule_id TEXT NOT NULL,
         rule_version TEXT NOT NULL,
         evidence_id TEXT NOT NULL,
@@ -615,10 +564,9 @@ DDL = [
         PRIMARY KEY(rule_id, rule_version, evidence_id),
         FOREIGN KEY(rule_id, rule_version) REFERENCES kb_rules(rule_id, version) ON DELETE CASCADE,
         FOREIGN KEY(evidence_id) REFERENCES kb_evidence_fragments(evidence_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_rule_evaluations(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_rule_evaluations(
         evaluation_id TEXT PRIMARY KEY,
         rule_id TEXT NOT NULL,
         rule_version TEXT NOT NULL,
@@ -633,10 +581,9 @@ DDL = [
         FOREIGN KEY(rule_id, rule_version) REFERENCES kb_rules(rule_id, version),
         FOREIGN KEY(environment_id) REFERENCES kb_environments(environment_id),
         FOREIGN KEY(environment_snapshot_id) REFERENCES kb_environment_snapshots(environment_snapshot_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_exploitability_assessments(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_exploitability_assessments(
         assessment_id TEXT PRIMARY KEY,
         record_id TEXT NOT NULL,
         environment_snapshot_id TEXT NOT NULL,
@@ -655,10 +602,9 @@ DDL = [
         FOREIGN KEY(environment_snapshot_id) REFERENCES kb_environment_snapshots(environment_snapshot_id),
         FOREIGN KEY(assessed_by) REFERENCES kb_actors(actor_id),
         FOREIGN KEY(supersedes_assessment_id) REFERENCES kb_exploitability_assessments(assessment_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_assessment_inputs(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_assessment_inputs(
         assessment_id TEXT NOT NULL,
         input_type TEXT NOT NULL CHECK(input_type IN ('rule_evaluation','experiment','assertion','attack_chain','evidence','mitigation')),
         reference_id TEXT NOT NULL,
@@ -666,12 +612,9 @@ DDL = [
         notes TEXT,
         PRIMARY KEY(assessment_id, input_type, reference_id),
         FOREIGN KEY(assessment_id) REFERENCES kb_exploitability_assessments(assessment_id) ON DELETE CASCADE
-    )
-    """,
+    );
 
-    # ------------------------------------------------------------- attack-chain graph
-    """
-    CREATE TABLE IF NOT EXISTS kb_attack_chains(
+CREATE TABLE IF NOT EXISTS kb_attack_chains(
         attack_chain_id TEXT PRIMARY KEY,
         name_en TEXT NOT NULL,
         name_zh TEXT,
@@ -686,10 +629,9 @@ DDL = [
         updated_at TEXT NOT NULL,
         metadata_json TEXT NOT NULL DEFAULT '{}',
         FOREIGN KEY(created_by) REFERENCES kb_actors(actor_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_attack_steps(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_attack_steps(
         attack_step_id TEXT PRIMARY KEY,
         attack_chain_id TEXT NOT NULL,
         step_order INTEGER,
@@ -704,10 +646,9 @@ DDL = [
         verification_status TEXT NOT NULL DEFAULT 'unknown',
         metadata_json TEXT NOT NULL DEFAULT '{}',
         FOREIGN KEY(attack_chain_id) REFERENCES kb_attack_chains(attack_chain_id) ON DELETE CASCADE
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_attack_edges(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_attack_edges(
         attack_edge_id TEXT PRIMARY KEY,
         attack_chain_id TEXT NOT NULL,
         source_step_id TEXT NOT NULL,
@@ -722,20 +663,18 @@ DDL = [
         FOREIGN KEY(source_step_id) REFERENCES kb_attack_steps(attack_step_id),
         FOREIGN KEY(target_step_id) REFERENCES kb_attack_steps(attack_step_id),
         FOREIGN KEY(condition_rule_id, condition_rule_version) REFERENCES kb_rules(rule_id, version)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_attack_step_records(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_attack_step_records(
         attack_step_id TEXT NOT NULL,
         record_id TEXT NOT NULL,
         role TEXT NOT NULL CHECK(role IN ('exploits','requires','triggered_by','amplified_by','results_in','context')),
         PRIMARY KEY(attack_step_id, record_id, role),
         FOREIGN KEY(attack_step_id) REFERENCES kb_attack_steps(attack_step_id) ON DELETE CASCADE,
         FOREIGN KEY(record_id) REFERENCES kb_records(record_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_attack_step_conditions(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_attack_step_conditions(
         attack_step_condition_id TEXT PRIMARY KEY,
         attack_step_id TEXT NOT NULL,
         condition_type TEXT NOT NULL CHECK(condition_type IN ('precondition','postcondition','blocking_condition','invariant')),
@@ -746,12 +685,9 @@ DDL = [
         FOREIGN KEY(attack_step_id) REFERENCES kb_attack_steps(attack_step_id) ON DELETE CASCADE,
         FOREIGN KEY(rule_id, rule_version) REFERENCES kb_rules(rule_id, version),
         FOREIGN KEY(assertion_id) REFERENCES kb_assertions(assertion_id)
-    )
-    """,
+    );
 
-    # ----------------------------------------------------------- reproducible testing
-    """
-    CREATE TABLE IF NOT EXISTS kb_experiment_protocols(
+CREATE TABLE IF NOT EXISTS kb_experiment_protocols(
         protocol_id TEXT NOT NULL,
         version TEXT NOT NULL,
         name TEXT NOT NULL,
@@ -767,10 +703,9 @@ DDL = [
         created_at TEXT NOT NULL,
         PRIMARY KEY(protocol_id, version),
         FOREIGN KEY(approved_by) REFERENCES kb_actors(actor_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_experiment_campaigns(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_experiment_campaigns(
         campaign_id TEXT PRIMARY KEY,
         record_id TEXT NOT NULL,
         name TEXT NOT NULL,
@@ -782,10 +717,9 @@ DDL = [
         metadata_json TEXT NOT NULL DEFAULT '{}',
         FOREIGN KEY(record_id) REFERENCES kb_records(record_id),
         FOREIGN KEY(created_by) REFERENCES kb_actors(actor_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_experiments(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_experiments(
         experiment_id TEXT PRIMARY KEY,
         record_id TEXT NOT NULL,
         environment_id TEXT NOT NULL,
@@ -809,10 +743,9 @@ DDL = [
         FOREIGN KEY(environment_snapshot_id) REFERENCES kb_environment_snapshots(environment_snapshot_id),
         FOREIGN KEY(campaign_id) REFERENCES kb_experiment_campaigns(campaign_id),
         FOREIGN KEY(protocol_id, protocol_version_ref) REFERENCES kb_experiment_protocols(protocol_id, version)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_experiment_steps(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_experiment_steps(
         experiment_step_id TEXT PRIMARY KEY,
         experiment_id TEXT NOT NULL,
         step_no INTEGER NOT NULL,
@@ -826,10 +759,9 @@ DDL = [
         metadata_json TEXT NOT NULL DEFAULT '{}',
         UNIQUE(experiment_id, step_no),
         FOREIGN KEY(experiment_id) REFERENCES kb_experiments(experiment_id) ON DELETE CASCADE
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_experiment_artifacts(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_experiment_artifacts(
         experiment_artifact_id TEXT PRIMARY KEY,
         experiment_id TEXT NOT NULL,
         artifact_type TEXT NOT NULL,
@@ -843,10 +775,9 @@ DDL = [
         metadata_json TEXT NOT NULL DEFAULT '{}',
         UNIQUE(experiment_id, content_hash, artifact_type),
         FOREIGN KEY(experiment_id) REFERENCES kb_experiments(experiment_id) ON DELETE CASCADE
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_experiment_observations(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_experiment_observations(
         experiment_observation_id TEXT PRIMARY KEY,
         experiment_id TEXT NOT NULL,
         observation_type TEXT NOT NULL,
@@ -859,12 +790,9 @@ DDL = [
         notes TEXT,
         FOREIGN KEY(experiment_id) REFERENCES kb_experiments(experiment_id) ON DELETE CASCADE,
         FOREIGN KEY(evidence_artifact_id) REFERENCES kb_experiment_artifacts(experiment_artifact_id)
-    )
-    """,
+    );
 
-    # ---------------------------------------------------------- defense and retesting
-    """
-    CREATE TABLE IF NOT EXISTS kb_mitigations(
+CREATE TABLE IF NOT EXISTS kb_mitigations(
         mitigation_id TEXT PRIMARY KEY,
         name_en TEXT NOT NULL,
         name_zh TEXT,
@@ -878,10 +806,9 @@ DDL = [
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         FOREIGN KEY(created_by) REFERENCES kb_actors(actor_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_mitigation_targets(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_mitigation_targets(
         mitigation_target_id TEXT PRIMARY KEY,
         mitigation_id TEXT NOT NULL,
         target_type TEXT NOT NULL CHECK(target_type IN ('record','attack_chain','attack_step','rule','component')),
@@ -893,20 +820,18 @@ DDL = [
         UNIQUE(mitigation_id, target_type, target_id, effect_type),
         FOREIGN KEY(mitigation_id) REFERENCES kb_mitigations(mitigation_id) ON DELETE CASCADE,
         FOREIGN KEY(assertion_id) REFERENCES kb_assertions(assertion_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_mitigation_evidence(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_mitigation_evidence(
         mitigation_id TEXT NOT NULL,
         evidence_id TEXT NOT NULL,
         support_type TEXT NOT NULL DEFAULT 'supports',
         PRIMARY KEY(mitigation_id, evidence_id),
         FOREIGN KEY(mitigation_id) REFERENCES kb_mitigations(mitigation_id) ON DELETE CASCADE,
         FOREIGN KEY(evidence_id) REFERENCES kb_evidence_fragments(evidence_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_defense_policies(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_defense_policies(
         defense_policy_id TEXT NOT NULL,
         version TEXT NOT NULL,
         name TEXT NOT NULL,
@@ -919,10 +844,9 @@ DDL = [
         created_at TEXT NOT NULL,
         PRIMARY KEY(defense_policy_id, version),
         FOREIGN KEY(generated_by) REFERENCES kb_actors(actor_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_policy_validations(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_policy_validations(
         policy_validation_id TEXT PRIMARY KEY,
         defense_policy_id TEXT NOT NULL,
         defense_policy_version TEXT NOT NULL,
@@ -935,10 +859,9 @@ DDL = [
         FOREIGN KEY(defense_policy_id, defense_policy_version) REFERENCES kb_defense_policies(defense_policy_id, version),
         FOREIGN KEY(environment_snapshot_id) REFERENCES kb_environment_snapshots(environment_snapshot_id),
         FOREIGN KEY(experiment_id) REFERENCES kb_experiments(experiment_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_repair_actions(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_repair_actions(
         repair_action_id TEXT PRIMARY KEY,
         record_id TEXT NOT NULL,
         mitigation_id TEXT,
@@ -955,10 +878,9 @@ DDL = [
         FOREIGN KEY(mitigation_id) REFERENCES kb_mitigations(mitigation_id),
         FOREIGN KEY(precondition_rule_id, precondition_rule_version) REFERENCES kb_rules(rule_id, version),
         FOREIGN KEY(approved_by) REFERENCES kb_actors(actor_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_retest_runs(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_retest_runs(
         retest_run_id TEXT PRIMARY KEY,
         record_id TEXT NOT NULL,
         repair_action_id TEXT,
@@ -976,10 +898,9 @@ DDL = [
         FOREIGN KEY(after_environment_snapshot_id) REFERENCES kb_environment_snapshots(environment_snapshot_id),
         FOREIGN KEY(experiment_id) REFERENCES kb_experiments(experiment_id),
         FOREIGN KEY(executed_by) REFERENCES kb_actors(actor_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_retest_checks(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_retest_checks(
         retest_check_id TEXT PRIMARY KEY,
         retest_run_id TEXT NOT NULL,
         check_type TEXT NOT NULL CHECK(check_type IN ('security','business','performance','compatibility','rollback')),
@@ -991,12 +912,9 @@ DDL = [
         notes TEXT,
         FOREIGN KEY(retest_run_id) REFERENCES kb_retest_runs(retest_run_id) ON DELETE CASCADE,
         FOREIGN KEY(artifact_id) REFERENCES kb_experiment_artifacts(experiment_artifact_id)
-    )
-    """,
+    );
 
-    # ------------------------------------------------------------- dataset releases
-    """
-    CREATE TABLE IF NOT EXISTS kb_dataset_releases(
+CREATE TABLE IF NOT EXISTS kb_dataset_releases(
         release_id TEXT PRIMARY KEY,
         release_name TEXT NOT NULL DEFAULT 'container-security-kb',
         release_version TEXT,
@@ -1009,30 +927,27 @@ DDL = [
         content_hash TEXT,
         FOREIGN KEY(taxonomy_version) REFERENCES kb_taxonomy_versions(taxonomy_version),
         FOREIGN KEY(released_by) REFERENCES kb_actors(actor_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_split_groups(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_split_groups(
         split_group_id TEXT PRIMARY KEY,
         group_type TEXT NOT NULL CHECK(group_type IN ('vulnerability_family','patch_family','component_family','attack_pattern','duplicate_cluster','time_cohort')),
         group_key TEXT NOT NULL,
         description TEXT,
         metadata_json TEXT NOT NULL DEFAULT '{}',
         UNIQUE(group_type, group_key)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_split_group_members(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_split_group_members(
         split_group_id TEXT NOT NULL,
         record_id TEXT NOT NULL,
         membership_role TEXT NOT NULL DEFAULT 'member',
         PRIMARY KEY(split_group_id, record_id),
         FOREIGN KEY(split_group_id) REFERENCES kb_split_groups(split_group_id) ON DELETE CASCADE,
         FOREIGN KEY(record_id) REFERENCES kb_records(record_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_dataset_memberships(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_dataset_memberships(
         release_id TEXT NOT NULL,
         record_id TEXT NOT NULL,
         split_name TEXT NOT NULL CHECK(split_name IN ('train','validation','test_id','test_ood','test_temporal','holdout','excluded')),
@@ -1045,10 +960,9 @@ DDL = [
         FOREIGN KEY(release_id) REFERENCES kb_dataset_releases(release_id),
         FOREIGN KEY(record_id) REFERENCES kb_records(record_id),
         FOREIGN KEY(split_group_id) REFERENCES kb_split_groups(split_group_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_release_artifacts(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_release_artifacts(
         release_artifact_id TEXT PRIMARY KEY,
         release_id TEXT NOT NULL,
         artifact_type TEXT NOT NULL,
@@ -1060,10 +974,9 @@ DDL = [
         created_at TEXT NOT NULL,
         UNIQUE(release_id, artifact_type, content_hash),
         FOREIGN KEY(release_id) REFERENCES kb_dataset_releases(release_id) ON DELETE CASCADE
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_split_leakage_audits(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_split_leakage_audits(
         leakage_audit_id TEXT PRIMARY KEY,
         release_id TEXT NOT NULL,
         audit_type TEXT NOT NULL CHECK(audit_type IN ('exact_duplicate','near_duplicate','family_overlap','component_overlap','temporal_leakage','source_overlap')),
@@ -1072,10 +985,9 @@ DDL = [
         tool_version TEXT NOT NULL,
         executed_at TEXT NOT NULL,
         FOREIGN KEY(release_id) REFERENCES kb_dataset_releases(release_id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_quality_check_runs(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_quality_check_runs(
         quality_run_id TEXT PRIMARY KEY,
         scope_type TEXT NOT NULL CHECK(scope_type IN ('database','record','release','taxonomy','experiment')),
         scope_id TEXT,
@@ -1084,10 +996,9 @@ DDL = [
         started_at TEXT NOT NULL,
         finished_at TEXT,
         summary_json TEXT NOT NULL DEFAULT '{}'
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS kb_quality_check_results(
+    );
+
+CREATE TABLE IF NOT EXISTS kb_quality_check_results(
         quality_result_id TEXT PRIMARY KEY,
         quality_run_id TEXT NOT NULL,
         check_code TEXT NOT NULL,
@@ -1098,35 +1009,39 @@ DDL = [
         message TEXT NOT NULL,
         details_json TEXT NOT NULL DEFAULT '{}',
         FOREIGN KEY(quality_run_id) REFERENCES kb_quality_check_runs(quality_run_id) ON DELETE CASCADE
-    )
-    """,
-]
+    );
 
-INDEX_DDL = [
-    "CREATE INDEX IF NOT EXISTS idx_kb_sources_type_level ON kb_sources(source_type, authority_level)",
-    "CREATE INDEX IF NOT EXISTS idx_kb_evidence_snapshot ON kb_evidence_fragments(snapshot_id)",
-    "CREATE INDEX IF NOT EXISTS idx_kb_conflicts_record_status ON kb_assertion_conflicts(record_id, status)",
-    "CREATE INDEX IF NOT EXISTS idx_kb_env_facts_path ON kb_environment_facts(fact_path)",
-    "CREATE INDEX IF NOT EXISTS idx_kb_rule_eval_rule_env ON kb_rule_evaluations(rule_id, rule_version, environment_id)",
-    "CREATE INDEX IF NOT EXISTS idx_kb_assessments_record_env ON kb_exploitability_assessments(record_id, environment_snapshot_id)",
-    "CREATE INDEX IF NOT EXISTS idx_kb_attack_steps_chain_order ON kb_attack_steps(attack_chain_id, step_order)",
-    "CREATE INDEX IF NOT EXISTS idx_kb_experiments_record_env ON kb_experiments(record_id, environment_id)",
-    "CREATE INDEX IF NOT EXISTS idx_kb_dataset_split ON kb_dataset_memberships(release_id, split_name)",
-    "CREATE INDEX IF NOT EXISTS idx_kb_audit_object ON kb_audit_events(object_type, object_id, occurred_at)",
-]
+CREATE INDEX IF NOT EXISTS idx_kb_sources_type_level ON kb_sources(source_type, authority_level);
 
-VIEW_DDL = [
-    "DROP VIEW IF EXISTS kb_v_unresolved_conflicts",
-    """
-    CREATE VIEW kb_v_unresolved_conflicts AS
+CREATE INDEX IF NOT EXISTS idx_kb_evidence_snapshot ON kb_evidence_fragments(snapshot_id);
+
+CREATE INDEX IF NOT EXISTS idx_kb_conflicts_record_status ON kb_assertion_conflicts(record_id, status);
+
+CREATE INDEX IF NOT EXISTS idx_kb_env_facts_path ON kb_environment_facts(fact_path);
+
+CREATE INDEX IF NOT EXISTS idx_kb_rule_eval_rule_env ON kb_rule_evaluations(rule_id, rule_version, environment_id);
+
+CREATE INDEX IF NOT EXISTS idx_kb_assessments_record_env ON kb_exploitability_assessments(record_id, environment_snapshot_id);
+
+CREATE INDEX IF NOT EXISTS idx_kb_attack_steps_chain_order ON kb_attack_steps(attack_chain_id, step_order);
+
+CREATE INDEX IF NOT EXISTS idx_kb_experiments_record_env ON kb_experiments(record_id, environment_id);
+
+CREATE INDEX IF NOT EXISTS idx_kb_dataset_split ON kb_dataset_memberships(release_id, split_name);
+
+CREATE INDEX IF NOT EXISTS idx_kb_audit_object ON kb_audit_events(object_type, object_id, occurred_at);
+
+DROP VIEW IF EXISTS kb_v_unresolved_conflicts;
+
+CREATE VIEW kb_v_unresolved_conflicts AS
     SELECT c.conflict_id, c.record_id, c.predicate, c.conflict_type, c.severity,
            c.status, c.summary, c.detected_at
     FROM kb_assertion_conflicts c
-    WHERE c.status IN ('open','under_review')
-    """,
-    "DROP VIEW IF EXISTS kb_v_latest_environment_snapshots",
-    """
-    CREATE VIEW kb_v_latest_environment_snapshots AS
+    WHERE c.status IN ('open','under_review');
+
+DROP VIEW IF EXISTS kb_v_latest_environment_snapshots;
+
+CREATE VIEW kb_v_latest_environment_snapshots AS
     SELECT s.*
     FROM kb_environment_snapshots s
     JOIN (
@@ -1135,11 +1050,11 @@ VIEW_DDL = [
         GROUP BY environment_id
     ) latest
       ON latest.environment_id=s.environment_id
-     AND latest.max_captured_at=s.captured_at
-    """,
-    "DROP VIEW IF EXISTS kb_v_record_evidence_coverage",
-    """
-    CREATE VIEW kb_v_record_evidence_coverage AS
+     AND latest.max_captured_at=s.captured_at;
+
+DROP VIEW IF EXISTS kb_v_record_evidence_coverage;
+
+CREATE VIEW kb_v_record_evidence_coverage AS
     SELECT r.record_id,
            COUNT(DISTINCT a.assertion_id) AS assertion_count,
            COUNT(DISTINCT ae.evidence_id) AS evidence_count,
@@ -1150,11 +1065,11 @@ VIEW_DDL = [
     LEFT JOIN kb_assertions a ON a.record_id=r.record_id
     LEFT JOIN kb_assertion_evidence ae ON ae.assertion_id=a.assertion_id
     LEFT JOIN kb_evidence_fragments e ON e.evidence_id=ae.evidence_id
-    GROUP BY r.record_id
-    """,
-    "DROP VIEW IF EXISTS kb_v_gold_readiness",
-    """
-    CREATE VIEW kb_v_gold_readiness AS
+    GROUP BY r.record_id;
+
+DROP VIEW IF EXISTS kb_v_gold_readiness;
+
+CREATE VIEW kb_v_gold_readiness AS
     SELECT r.record_id, r.record_type, r.status, r.review_status,
            COALESCE(c.assertion_count,0) AS assertion_count,
            COALESCE(c.evidence_count,0) AS evidence_count,
@@ -1175,171 +1090,38 @@ VIEW_DDL = [
         SELECT record_id, COUNT(*) AS open_conflicts
         FROM kb_v_unresolved_conflicts
         GROUP BY record_id
-    ) x ON x.record_id=r.record_id
-    """,
-]
+    ) x ON x.record_id=r.record_id;
 
-TRIGGER_DDL = [
-    "DROP TRIGGER IF EXISTS kb_trg_no_model_gold_insert",
-    """
-    CREATE TRIGGER kb_trg_no_model_gold_insert
+DROP TRIGGER IF EXISTS kb_trg_no_model_gold_insert;
+
+CREATE TRIGGER kb_trg_no_model_gold_insert
     BEFORE INSERT ON kb_records
     WHEN NEW.status='gold' AND NEW.generated_by_model=1
     BEGIN
         SELECT RAISE(ABORT, 'model-generated record cannot be inserted as Gold');
-    END
-    """,
-    "DROP TRIGGER IF EXISTS kb_trg_no_model_gold_update",
-    """
-    CREATE TRIGGER kb_trg_no_model_gold_update
+    END;
+
+DROP TRIGGER IF EXISTS kb_trg_no_model_gold_update;
+
+CREATE TRIGGER kb_trg_no_model_gold_update
     BEFORE UPDATE OF status, generated_by_model ON kb_records
     WHEN NEW.status='gold' AND NEW.generated_by_model=1
     BEGIN
         SELECT RAISE(ABORT, 'model-generated record cannot be promoted to Gold');
-    END
-    """,
-    "DROP TRIGGER IF EXISTS kb_trg_source_snapshot_immutable_update",
-    """
-    CREATE TRIGGER kb_trg_source_snapshot_immutable_update
+    END;
+
+DROP TRIGGER IF EXISTS kb_trg_source_snapshot_immutable_update;
+
+CREATE TRIGGER kb_trg_source_snapshot_immutable_update
     BEFORE UPDATE ON kb_source_snapshots
     BEGIN
         SELECT RAISE(ABORT, 'source snapshots are immutable; create a new snapshot');
-    END
-    """,
-    "DROP TRIGGER IF EXISTS kb_trg_environment_snapshot_immutable_update",
-    """
-    CREATE TRIGGER kb_trg_environment_snapshot_immutable_update
+    END;
+
+DROP TRIGGER IF EXISTS kb_trg_environment_snapshot_immutable_update;
+
+CREATE TRIGGER kb_trg_environment_snapshot_immutable_update
     BEFORE UPDATE ON kb_environment_snapshots
     BEGIN
         SELECT RAISE(ABORT, 'environment snapshots are immutable; create a new snapshot');
-    END
-    """,
-]
-
-FORMAL_TABLES = tuple(
-    name
-    for name in (
-        'kb_schema_migrations','kb_actors','kb_ingestion_runs','kb_ingestion_items','kb_audit_events',
-        'kb_taxonomy_versions','kb_taxonomy_nodes','kb_taxonomy_edges','kb_records','kb_record_identifiers',
-        'kb_record_revisions','kb_record_relations','kb_products','kb_components','kb_record_components',
-        'kb_version_ranges','kb_record_taxonomy_assignments','kb_external_taxonomy_mappings','kb_sources',
-        'kb_source_snapshots','kb_evidence_fragments','kb_assertions','kb_assertion_revisions',
-        'kb_assertion_evidence','kb_assertion_conflicts','kb_conflict_assertions','kb_conflict_resolutions',
-        'kb_annotation_tasks','kb_annotation_decisions','kb_annotation_rechecks','kb_gold_admission_reviews','kb_environments',
-        'kb_environment_snapshots','kb_environment_facts','kb_environment_relations','kb_rules',
-        'kb_rule_evidence','kb_rule_evaluations','kb_exploitability_assessments','kb_assessment_inputs',
-        'kb_attack_chains','kb_attack_steps','kb_attack_edges','kb_attack_step_records',
-        'kb_attack_step_conditions','kb_experiment_protocols','kb_experiment_campaigns','kb_experiments',
-        'kb_experiment_steps','kb_experiment_artifacts','kb_experiment_observations','kb_mitigations',
-        'kb_mitigation_targets','kb_mitigation_evidence','kb_defense_policies','kb_policy_validations',
-        'kb_repair_actions','kb_retest_runs','kb_retest_checks','kb_dataset_releases','kb_split_groups',
-        'kb_split_group_members','kb_dataset_memberships','kb_release_artifacts','kb_split_leakage_audits',
-        'kb_quality_check_runs','kb_quality_check_results',
-    )
-)
-
-
-@contextmanager
-def connect(db_path: str | Path) -> Iterator[sqlite3.Connection]:
-    path = Path(db_path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    connection = sqlite3.connect(str(path))
-    connection.row_factory = sqlite3.Row
-    connection.execute("PRAGMA foreign_keys = ON")
-    connection.execute("PRAGMA journal_mode = WAL")
-    connection.execute("PRAGMA busy_timeout = 5000")
-    try:
-        yield connection
-    except Exception:
-        connection.rollback()
-        raise
-    finally:
-        connection.close()
-
-
-def _columns(connection: sqlite3.Connection, table: str) -> set[str]:
-    return {row[1] for row in connection.execute(f"PRAGMA table_info({table})").fetchall()}
-
-
-def _add_column(connection: sqlite3.Connection, table: str, definition: str) -> None:
-    name = definition.split()[0]
-    if name not in _columns(connection, table):
-        connection.execute(f"ALTER TABLE {table} ADD COLUMN {definition}")
-
-
-def _upgrade_mvp_tables(connection: sqlite3.Connection) -> None:
-    """Add formal nullable/default columns to an existing 0.1 database without data loss."""
-    existing = {r[0] for r in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-    if 'kb_schema_migrations' in existing:
-        for definition in ("checksum TEXT", "notes TEXT"):
-            _add_column(connection, 'kb_schema_migrations', definition)
-    if 'kb_records' in existing:
-        for definition in (
-            "canonical_key TEXT", "schema_version TEXT NOT NULL DEFAULT '1.0.0'",
-            "taxonomy_version TEXT", "review_status TEXT NOT NULL DEFAULT 'unreviewed'",
-            "generated_by_model INTEGER NOT NULL DEFAULT 0", "deprecated_reason TEXT", "deleted_at TEXT",
-        ):
-            _add_column(connection, 'kb_records', definition)
-    if 'kb_assertions' in existing:
-        for definition in (
-            "assertion_type TEXT NOT NULL DEFAULT 'fact'", "generated_by_model INTEGER NOT NULL DEFAULT 0",
-            "valid_from TEXT", "valid_to TEXT", "supersedes_assertion_id TEXT", "content_hash TEXT",
-        ):
-            _add_column(connection, 'kb_assertions', definition)
-    if 'kb_evidence_fragments' in existing:
-        for definition in ("fragment_type TEXT NOT NULL DEFAULT 'text'", "start_offset INTEGER", "end_offset INTEGER"):
-            _add_column(connection, 'kb_evidence_fragments', definition)
-    if 'kb_environments' in existing:
-        _add_column(connection, 'kb_environments', "environment_type TEXT NOT NULL DEFAULT 'profile'")
-    if 'kb_rules' in existing:
-        for definition in (
-            "rule_type TEXT NOT NULL DEFAULT 'exploitability'", "status TEXT NOT NULL DEFAULT 'draft'",
-            "logic_version TEXT NOT NULL DEFAULT '1.0'", "created_by TEXT", "supersedes_version TEXT",
-        ):
-            _add_column(connection, 'kb_rules', definition)
-    if 'kb_experiments' in existing:
-        for definition in (
-            "environment_snapshot_id TEXT", "campaign_id TEXT", "protocol_id TEXT", "protocol_version_ref TEXT",
-            "status TEXT NOT NULL DEFAULT 'completed'", "repeat_index INTEGER NOT NULL DEFAULT 1",
-            "started_at TEXT", "finished_at TEXT",
-        ):
-            _add_column(connection, 'kb_experiments', definition)
-    if 'kb_dataset_releases' in existing:
-        for definition in (
-            "release_name TEXT NOT NULL DEFAULT 'container-security-kb'", "release_version TEXT",
-            "release_status TEXT NOT NULL DEFAULT 'draft'", "released_by TEXT", "content_hash TEXT",
-        ):
-            _add_column(connection, 'kb_dataset_releases', definition)
-    if 'kb_dataset_memberships' in existing:
-        for definition in (
-            "split_group_id TEXT", "inclusion_reason TEXT", "record_content_hash TEXT", "added_at TEXT",
-        ):
-            _add_column(connection, 'kb_dataset_memberships', definition)
-    if 'kb_assertion_evidence' in existing:
-        for definition in ("support_type TEXT NOT NULL DEFAULT 'supports'", "strength REAL", "notes TEXT"):
-            _add_column(connection, 'kb_assertion_evidence', definition)
-    if 'kb_rule_evaluations' in existing:
-        for definition in ("environment_snapshot_id TEXT", "error_json TEXT NOT NULL DEFAULT '{}'"):
-            _add_column(connection, 'kb_rule_evaluations', definition)
-
-
-def init_trusted_kb(db_path: str | Path, applied_at: str) -> None:
-    with connect(db_path) as connection:
-        # Upgrade columns on already-existing MVP tables before indexes/views refer to the
-        # formal columns. Fresh databases have no old tables, so DDL creates the full shape.
-        _upgrade_mvp_tables(connection)
-        for statement in DDL:
-            connection.execute(statement)
-        _upgrade_mvp_tables(connection)
-        for statement in INDEX_DDL:
-            connection.execute(statement)
-        for statement in VIEW_DDL:
-            connection.execute(statement)
-        for statement in TRIGGER_DDL:
-            connection.execute(statement)
-        connection.execute(
-            "INSERT OR IGNORE INTO kb_schema_migrations(version, applied_at, checksum, notes) VALUES(?,?,?,?)",
-            (SCHEMA_VERSION, applied_at, 'formal-schema-1.0.0', 'PhD research formal schema'),
-        )
-        connection.execute(f"PRAGMA user_version = 10000")
-        connection.commit()
+    END;

@@ -47,6 +47,9 @@ def build_parser() -> argparse.ArgumentParser:
     kb_export.add_argument("record_id")
     kb_export.add_argument("--db", default="data/trusted_knowledge.db")
     kb_export.add_argument("--output", required=True)
+
+    kb_schema = sub.add_parser("kb-schema-report", help="report formal trusted-KB schema status")
+    kb_schema.add_argument("--db", default="data/trusted_knowledge.db")
     return p
 
 
@@ -54,15 +57,17 @@ def main() -> None:
     args = build_parser().parse_args()
     command = args.cmd or "doctor"
 
-    if command in {"kb-init", "kb-validate", "kb-export"}:
-        from .knowledge.cli import export_bundle_command, init_command, validate_command
+    if command in {"kb-init", "kb-validate", "kb-export", "kb-schema-report"}:
+        from .knowledge.cli import export_bundle_command, init_command, schema_report_command, validate_command
 
         if command == "kb-init":
             out(init_command(args.db))
         elif command == "kb-validate":
             out(validate_command(args.db, args.record_id))
-        else:
+        elif command == "kb-export":
             out(export_bundle_command(args.db, args.record_id, args.output))
+        else:
+            out(schema_report_command(args.db))
         return
 
     pipe = CVERPipeline(args.profile or "demo")
