@@ -23,3 +23,33 @@ logs/
 # Secrets
 .env
 *.key
+
+# Python-generated files
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Secrets and machine-local configuration
+.env
+*.key
+
+# Runtime databases and transient files
+data/*.db
+data/*.db-*
+data/*.sqlite
+data/*.sqlite-*
+
+# Raw/staging/review/experiment data are local research artifacts
+data/raw/
+data/staging/
+data/review/
+data/experiments/
+data/releases/
+
+# Generated outputs
+outputs/
+logs/

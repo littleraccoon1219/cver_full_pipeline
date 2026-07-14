@@ -64,12 +64,18 @@ class GoldAdmissionValidator:
                 issues.append(ValidationIssue(check.upper(), f"Gold admission failed: {check}"))
 
         if record_type == RecordType.VULNERABILITY.value:
-            for check in ["has_independent_source", "has_version_assertions", "has_patch_or_source_evidence"]:
+            for check in [
+                "has_independent_source",
+                "has_version_assertions",
+                "has_patch_or_source_evidence",
+                "has_experiment",
+            ]:
                 if not checks[check]:
                     issues.append(ValidationIssue(check.upper(), f"Vulnerability Gold admission failed: {check}"))
         elif record_type == RecordType.MISCONFIGURATION.value:
-            if not checks["has_experiment"]:
-                issues.append(ValidationIssue("EXPERIMENT_REQUIRED", "Misconfiguration Gold record requires repeatable experiment evidence"))
+            for check in ["has_independent_source", "has_experiment"]:
+                if not checks[check]:
+                    issues.append(ValidationIssue(check.upper(), f"Misconfiguration Gold admission failed: {check}"))
         elif record_type in {RecordType.ATTACK_PATTERN.value, RecordType.SUPPLY_CHAIN_INCIDENT.value}:
             has_authoritative_case = bool({"peer_reviewed_paper", "incident_report", "official_advisory"} & source_types)
             checks["has_authoritative_case"] = has_authoritative_case

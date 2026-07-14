@@ -1,0 +1,20 @@
+# Curate real container/cloud-native supply-chain incidents here. The collector
+# downloads only approved seed URLs/files and proposes linked sources for review.
+incidents: []
+
+# Example:
+# incidents:
+#   - external_id: SCI-EXAMPLE-001
+#     title: Example container registry compromise
+#     url: https://vendor.example/security/incident-report
+#     source_id: VENDOR-INCIDENT-001
+#     source_name: Vendor incident report
+#     source_type: incident_report
+#     authority_level: E0
+#     publisher: Example Vendor
+#     event_date: "2024-01-01"
+#     incident_type: registry_compromise
+#     technology_bucket: container_registry
+#     affected_projects: [example-registry]
+#     match_terms: [container, registry]
+#     related_urls: []

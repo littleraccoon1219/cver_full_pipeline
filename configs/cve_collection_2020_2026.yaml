@@ -1,0 +1,29 @@
+version: "1.0"
+start_year: 2020
+end_year: 2026
+target_count: 160
+buckets:
+  - name: kubernetes_orchestration
+    target: 30
+    keywords: [kubernetes, kubelet, kube-apiserver, kube-controller-manager, kube-scheduler]
+  - name: docker_moby
+    target: 18
+    keywords: [docker, moby, dockerd]
+  - name: runc
+    target: 18
+    keywords: [runc, opencontainers runtime]
+  - name: containerd
+    target: 18
+    keywords: [containerd]
+  - name: crio_podman
+    target: 12
+    keywords: [cri-o, podman, conmon]
+  - name: kernel_isolation
+    target: 32
+    keywords: [container namespace, cgroup container, seccomp container, apparmor container, ebpf container, container escape]
+  - name: secure_container_microvm
+    target: 18
+    keywords: [kata containers, gvisor, firecracker microvm]
+  - name: image_registry_build
+    target: 12
+    keywords: [container image registry, docker registry, container build, buildkit]

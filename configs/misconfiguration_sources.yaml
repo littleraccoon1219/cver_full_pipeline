@@ -1,0 +1,17 @@
+# Download licensed CIS PDFs manually and place them under data/raw/cis/.
+# Add official public documentation URLs or local files below. Each collector run
+# creates Candidate records only; independent evidence and experiments are added later.
+sources: []
+
+# Example:
+# sources:
+#   - source_id: CIS-DOCKER-1.7.0
+#     name: CIS Docker Benchmark v1.7.0
+#     path: data/raw/cis/CIS_Docker_Benchmark_v1.7.0.pdf
+#     source_type: security_benchmark
+#     authority_level: E0
+#     publisher: Center for Internet Security
+#     license_name: CIS Benchmark license applies
+#     version: "1.7.0"
+#     technology_bucket: docker_configuration
+#     language: en

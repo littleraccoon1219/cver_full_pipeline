@@ -133,7 +133,7 @@ class TrustedKnowledgeTests(unittest.TestCase):
                 {"predicate": "fixed_versions", "evidence_ids": ["EV-2"]},
                 {"predicate": "root_cause", "evidence_ids": ["EV-3"]},
             ],
-            "experiments": [],
+            "experiments": [{"experiment_id": "EXP-1", "validation_level": "L1", "outcome": "confirmed"}],
             "unresolved_conflicts": [],
         }
         report = GoldAdmissionValidator().validate(bundle)
