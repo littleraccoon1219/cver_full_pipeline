@@ -28,6 +28,12 @@ python3 -m cver web --host 0.0.0.0 --port 8000
 
 访问 `http://127.0.0.1:8000`。
 
+Docker Compose：
+
+```bash
+docker compose up --build
+```
+
 ## 正式可信知识库
 
 运行流水线数据库与论文可信知识库分离：
@@ -54,7 +60,7 @@ python3 scripts/kb_schema_report.py --db data/trusted_knowledge.db
 ```bash
 export NVD_API_KEY='your-key'
 python3 scripts/kb_fetch_nvd_candidates.py \
-  --start-year 2020 --end-year 2026 --target-count 160 \
+  --start-year 2020 --end-year 2026 --target-count 158 \
   --quota-config configs/cve_collection_2020_2026.yaml \
   --output data/staging/nvd/run-001
 
@@ -86,7 +92,7 @@ python3 scripts/kb_import_candidate_bundle.py \
   --actor-id researcher-yupeng --actor-name Yupeng
 ```
 
-Candidate导入后仍必须补充E0官方来源、E2独立来源、版本断言和实验记录。CVE与错误配置没有实验记录时不能通过Gold准入。
+Candidate导入后仍必须补充E0官方来源、E2独立来源、版本断言和实验记录。CVE与错误配置只有在实验状态为`completed`、验证等级至少为`L1`、关联环境快照且具有实验工件或结构化观察时，才能通过Gold准入。
 
 ## 仓库清理
 

@@ -1,7 +1,7 @@
 version: "1.0"
 start_year: 2020
 end_year: 2026
-target_count: 160
+target_count: 158
 buckets:
   - name: kubernetes_orchestration
     target: 30

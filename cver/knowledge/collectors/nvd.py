@@ -3,9 +3,7 @@ from __future__ import annotations
 import datetime as dt
 import json
 import os
-import time
 import urllib.parse
-import urllib.request
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -20,11 +18,23 @@ def date_chunks(start_year: int, end_year: int) -> Iterable[tuple[dt.date, dt.da
     if start_year > end_year:
         raise ValueError("start_year must be <= end_year")
     current = dt.date(start_year, 1, 1)
-    end = dt.date(end_year, 12, 31)
+    today = dt.datetime.now(dt.timezone.utc).date()
+    end = min(dt.date(end_year, 12, 31), today)
     while current <= end:
         chunk_end = min(current + dt.timedelta(days=119), end)
         yield current, chunk_end
         current = chunk_end + dt.timedelta(days=1)
+
+
+def stratified_date_chunks(start_year: int, end_year: int) -> Iterable[tuple[dt.date, dt.date]]:
+    """Interleave yearly windows so early years cannot consume an entire bucket quota."""
+    by_year = {year: list(date_chunks(year, year)) for year in range(start_year, end_year + 1)}
+    max_chunks = max((len(chunks) for chunks in by_year.values()), default=0)
+    for chunk_index in range(max_chunks):
+        for year in range(start_year, end_year + 1):
+            chunks = by_year[year]
+            if chunk_index < len(chunks):
+                yield chunks[chunk_index]
 
 
 def english_description(cve: dict[str, Any]) -> str:
@@ -187,7 +197,7 @@ def collect_nvd_candidates(
     quota_config: str | Path,
     start_year: int = 2020,
     end_year: int = 2026,
-    target_count: int = 160,
+    target_count: int = 158,
     api_key: str | None = None,
     sleep_seconds: float | None = None,
 ) -> dict[str, Any]:
@@ -217,14 +227,13 @@ def collect_nvd_candidates(
         for keyword in bucket["keywords"]:
             if bucket_counts[bucket_name] >= bucket_target or len(builder.candidates) >= target_count:
                 break
-            for start, end in date_chunks(start_year, end_year):
+            for start, end in stratified_date_chunks(start_year, end_year):
                 if bucket_counts[bucket_name] >= bucket_target or len(builder.candidates) >= target_count:
                     break
                 params = {
                     "keywordSearch": str(keyword),
                     "pubStartDate": f"{start.isoformat()}T00:00:00.000Z",
                     "pubEndDate": f"{end.isoformat()}T23:59:59.999Z",
-                    "noRejected": "",
                 }
                 try:
                     pages = client.iter_pages(params)
@@ -235,9 +244,6 @@ def collect_nvd_candidates(
                             if not cve_id.startswith("CVE-") or cve_id in assigned:
                                 continue
                             if str(cve.get("vulnStatus") or "").lower() == "rejected":
-                                continue
-                            description = english_description(cve).lower()
-                            if str(keyword).lower() not in description and bucket_name.lower() not in description:
                                 continue
                             raw = (json.dumps(cve, ensure_ascii=False, sort_keys=True) + "\n").encode("utf-8")
                             snapshot = builder.store_raw(cve_id, raw, suffix=".json", media_type="application/json")

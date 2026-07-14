@@ -17,7 +17,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Collect NVD records into a Candidate bundle; do not write the database.")
     parser.add_argument("--start-year", type=int, default=2020)
     parser.add_argument("--end-year", type=int, default=2026)
-    parser.add_argument("--target-count", type=int, default=160)
+    parser.add_argument("--target-count", type=int, default=158)
     parser.add_argument("--quota-config", default="configs/cve_collection_2020_2026.yaml")
     parser.add_argument("--output", required=True)
     parser.add_argument("--sleep", type=float, default=None)

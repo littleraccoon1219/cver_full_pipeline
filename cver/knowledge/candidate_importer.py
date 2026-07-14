@@ -1,12 +1,45 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
 from .candidate_validation import validate_candidate_bundle
 from .collectors.common import canonical_json, now_iso, read_jsonl, sha256_bytes, stable_id
 from .schema import connect, init_trusted_kb
+
+
+def _insert_ingestion_item(
+    connection: Any,
+    *,
+    run_id: str,
+    record_type: str,
+    external_id: str,
+    source_id: str | None,
+    record_id: str | None,
+    status: str,
+    reason: str,
+    raw_hash: str | None,
+    now: str,
+) -> None:
+    connection.execute(
+        """
+        INSERT INTO kb_ingestion_items(
+          ingestion_item_id,ingestion_run_id,external_key,source_id,record_id,status,reason,raw_hash,created_at,updated_at
+        ) VALUES(?,?,?,?,?,?,?,?,?,?)
+        """,
+        (
+            stable_id("ITEM", run_id, record_type, external_id),
+            run_id,
+            external_id,
+            source_id,
+            record_id,
+            status,
+            reason,
+            raw_hash,
+            now,
+            now,
+        ),
+    )
 
 
 def import_candidate_bundle(
@@ -24,12 +57,37 @@ def import_candidate_bundle(
     manifest = report.stats["manifest"]
     candidates = read_jsonl(root / "candidates.jsonl")
     if dry_run:
-        return {"ok": True, "dry_run": True, "would_import": len(candidates), "validation": report.to_dict()}
+        return {
+            "ok": True,
+            "dry_run": True,
+            "would_import": len(candidates),
+            "validation": report.to_dict(),
+        }
+
     init_trusted_kb(db_path, now_iso())
     now = now_iso()
     imported = 0
+    skipped = 0
+    run_id = str(manifest["ingestion_run_id"])
+
     with connect(db_path) as connection:
         connection.execute("BEGIN IMMEDIATE")
+        existing_run = connection.execute(
+            "SELECT status,stats_json FROM kb_ingestion_runs WHERE ingestion_run_id=?",
+            (run_id,),
+        ).fetchone()
+        if existing_run:
+            connection.rollback()
+            return {
+                "ok": True,
+                "dry_run": False,
+                "already_imported": True,
+                "imported": 0,
+                "skipped": len(candidates),
+                "ingestion_run_id": run_id,
+                "validation": report.to_dict(),
+            }
+
         connection.execute(
             """
             INSERT INTO kb_actors(actor_id,actor_type,display_name,metadata_json,active,created_at,updated_at)
@@ -38,7 +96,6 @@ def import_candidate_bundle(
             """,
             (actor_id, actor_name or actor_id, now, now),
         )
-        run_id = str(manifest["ingestion_run_id"])
         connection.execute(
             """
             INSERT INTO kb_ingestion_runs(
@@ -56,10 +113,11 @@ def import_candidate_bundle(
                 now,
                 "completed",
                 actor_id,
-                canonical_json({"candidate_count": len(candidates)}),
+                canonical_json({"candidate_count": len(candidates), "imported": 0, "skipped": 0}),
                 canonical_json({"error_count": manifest.get("error_count", 0)}),
             ),
         )
+
         for item in candidates:
             record_type = str(item["record_type"])
             external_id = str(item["external_id"])
@@ -81,13 +139,49 @@ def import_candidate_bundle(
             )
             content_hash = sha256_bytes(canonical_json(item).encode("utf-8"))
             existing_record = connection.execute(
-                "SELECT record_id,status FROM kb_records WHERE record_type=? AND external_id=?",
+                "SELECT * FROM kb_records WHERE record_type=? AND external_id=?",
                 (record_type, external_id),
             ).fetchone()
+
+            if existing_record and existing_record["status"] != "candidate":
+                _insert_ingestion_item(
+                    connection,
+                    run_id=run_id,
+                    record_type=record_type,
+                    external_id=external_id,
+                    source_id=None,
+                    record_id=existing_record["record_id"],
+                    status="skipped",
+                    reason=f"Existing record has protected status {existing_record['status']}; Candidate import cannot downgrade it",
+                    raw_hash=snapshot.get("sha256"),
+                    now=now,
+                )
+                skipped += 1
+                continue
+
             if existing_record:
                 actual_record = existing_record["record_id"]
-                if existing_record["status"] == "gold":
-                    raise ValueError(f"refusing to overwrite Gold record: {external_id}")
+                if existing_record["content_hash"] != content_hash:
+                    revision_no = connection.execute(
+                        "SELECT COALESCE(MAX(revision_no),0)+1 FROM kb_record_revisions WHERE record_id=?",
+                        (actual_record,),
+                    ).fetchone()[0]
+                    connection.execute(
+                        """
+                        INSERT INTO kb_record_revisions(
+                          record_id,revision_no,content_hash,snapshot_json,changed_by,change_reason,created_at
+                        ) VALUES(?,?,?,?,?,?,?)
+                        """,
+                        (
+                            actual_record,
+                            revision_no,
+                            existing_record["content_hash"],
+                            canonical_json(dict(existing_record)),
+                            actor_id,
+                            "Candidate refresh from validated ingestion bundle",
+                            now,
+                        ),
+                    )
                 connection.execute(
                     """
                     UPDATE kb_records SET
@@ -133,6 +227,7 @@ def import_candidate_bundle(
                         now,
                     ),
                 )
+
             connection.execute(
                 """
                 INSERT INTO kb_record_identifiers(identifier_id,record_id,scheme,identifier_value,is_primary,metadata_json)
@@ -144,7 +239,10 @@ def import_candidate_bundle(
                 """
                 INSERT INTO kb_sources(source_id,name,source_type,authority_level,url,publisher,license_name,retrieved_at,metadata_json,created_at,updated_at)
                 VALUES(?,?,?,?,?,?,?,?, '{}',?,?)
-                ON CONFLICT(source_id) DO UPDATE SET url=excluded.url,retrieved_at=excluded.retrieved_at,updated_at=excluded.updated_at
+                ON CONFLICT(source_id) DO UPDATE SET
+                  name=excluded.name,source_type=excluded.source_type,authority_level=excluded.authority_level,
+                  url=excluded.url,publisher=excluded.publisher,license_name=excluded.license_name,
+                  retrieved_at=excluded.retrieved_at,updated_at=excluded.updated_at
                 """,
                 (
                     source_id,
@@ -200,7 +298,13 @@ def import_candidate_bundle(
                 if assertion.get("object") in (None, "", []):
                     continue
                 predicate = str(assertion["predicate"])
-                assertion_id = stable_id("AST", actual_record, predicate, canonical_json(assertion.get("object")), length=20)
+                assertion_id = stable_id(
+                    "AST",
+                    actual_record,
+                    predicate,
+                    canonical_json(assertion.get("object")),
+                    length=20,
+                )
                 object_json = canonical_json(assertion.get("object"))
                 connection.execute(
                     """
@@ -226,28 +330,54 @@ def import_candidate_bundle(
                     "INSERT OR IGNORE INTO kb_assertion_evidence(assertion_id,evidence_id,support_type) VALUES(?,?, 'supports')",
                     (assertion_id, evidence_id),
                 )
-            connection.execute(
-                """
-                INSERT INTO kb_ingestion_items(
-                  ingestion_item_id,ingestion_run_id,external_key,source_id,record_id,status,reason,raw_hash,created_at,updated_at
-                ) VALUES(?,?,?,?,?,'imported',?,?,?,?)
-                """,
-                (
-                    stable_id("ITEM", run_id, record_type, external_id),
-                    run_id,
-                    external_id,
-                    source_id,
-                    actual_record,
-                    "Validated Candidate bundle import",
-                    snapshot["sha256"],
-                    now,
-                    now,
-                ),
+
+            _insert_ingestion_item(
+                connection,
+                run_id=run_id,
+                record_type=record_type,
+                external_id=external_id,
+                source_id=source_id,
+                record_id=actual_record,
+                status="imported",
+                reason="Validated Candidate bundle import",
+                raw_hash=snapshot["sha256"],
+                now=now,
             )
             imported += 1
+
+        connection.execute(
+            "UPDATE kb_ingestion_runs SET stats_json=? WHERE ingestion_run_id=?",
+            (
+                canonical_json(
+                    {
+                        "candidate_count": len(candidates),
+                        "imported": imported,
+                        "skipped": skipped,
+                    }
+                ),
+                run_id,
+            ),
+        )
         connection.execute(
             "INSERT INTO kb_audit_events(occurred_at,actor_id,action,object_type,object_id,reason,metadata_json) VALUES(?,?,?,?,?,?,?)",
-            (now, actor_id, "candidate_bundle_import", "ingestion_run", run_id, "Separated collection/validation/import workflow", canonical_json({"imported": imported})),
+            (
+                now,
+                actor_id,
+                "candidate_bundle_import",
+                "ingestion_run",
+                run_id,
+                "Separated collection/validation/import workflow",
+                canonical_json({"imported": imported, "skipped": skipped}),
+            ),
         )
         connection.commit()
-    return {"ok": True, "dry_run": False, "imported": imported, "ingestion_run_id": manifest["ingestion_run_id"], "validation": report.to_dict()}
+
+    return {
+        "ok": True,
+        "dry_run": False,
+        "already_imported": False,
+        "imported": imported,
+        "skipped": skipped,
+        "ingestion_run_id": run_id,
+        "validation": report.to_dict(),
+    }

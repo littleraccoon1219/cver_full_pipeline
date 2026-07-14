@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from typing import Any
 
@@ -30,6 +31,32 @@ class ValidationReport:
         }
 
 
+def _nonempty_json(value: Any) -> bool:
+    if value in (None, "", [], {}):
+        return False
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except json.JSONDecodeError:
+            return bool(value.strip())
+    return value not in (None, "", [], {})
+
+
+def _validated_experiment(experiment: dict[str, Any]) -> bool:
+    level = str(experiment.get("validation_level") or "").upper()
+    level_rank = {"L0": 0, "L1": 1, "L2": 2, "L3": 3}.get(level, -1)
+    return all(
+        [
+            experiment.get("status") == "completed",
+            level_rank >= 1,
+            bool(experiment.get("environment_snapshot_id")),
+            bool(str(experiment.get("outcome") or "").strip()),
+            _nonempty_json(experiment.get("artifacts_json") or experiment.get("artifacts"))
+            or _nonempty_json(experiment.get("observations_json") or experiment.get("observations")),
+        ]
+    )
+
+
 class GoldAdmissionValidator:
     """Deterministic Gold admission policy. No model-generated field is accepted."""
 
@@ -46,6 +73,7 @@ class GoldAdmissionValidator:
         evidence_levels = {source.get("authority_level") for source in sources}
         source_types = {source.get("source_type") for source in sources}
         predicates = {assertion.get("predicate") for assertion in assertions}
+        validated_experiments = [experiment for experiment in experiments if _validated_experiment(experiment)]
 
         checks = {
             "has_primary_source": EvidenceLevel.E0_PRIMARY.value in evidence_levels,
@@ -56,6 +84,7 @@ class GoldAdmissionValidator:
             "has_version_assertions": {"affected_versions", "fixed_versions"}.issubset(predicates),
             "has_patch_or_source_evidence": bool({"patch", "source_code"} & source_types),
             "has_experiment": bool(experiments),
+            "has_validated_experiment": bool(validated_experiments),
         }
 
         required_common = ["has_primary_source", "has_verified_root_cause", "has_root_cause_labels", "has_field_evidence"]
@@ -69,11 +98,12 @@ class GoldAdmissionValidator:
                 "has_version_assertions",
                 "has_patch_or_source_evidence",
                 "has_experiment",
+                "has_validated_experiment",
             ]:
                 if not checks[check]:
                     issues.append(ValidationIssue(check.upper(), f"Vulnerability Gold admission failed: {check}"))
         elif record_type == RecordType.MISCONFIGURATION.value:
-            for check in ["has_independent_source", "has_experiment"]:
+            for check in ["has_independent_source", "has_experiment", "has_validated_experiment"]:
                 if not checks[check]:
                     issues.append(ValidationIssue(check.upper(), f"Misconfiguration Gold admission failed: {check}"))
         elif record_type in {RecordType.ATTACK_PATTERN.value, RecordType.SUPPLY_CHAIN_INCIDENT.value}:

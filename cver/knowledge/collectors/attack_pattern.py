@@ -21,22 +21,31 @@ _CONTAINER_TERMS = {
     "docker",
     "kubernetes",
     "kubelet",
-    "pod",
-    "cluster",
     "cloud native",
     "escape to host",
     "container administration",
     "deploy container",
     "exposed docker",
-    "image",
-    "orchestration",
-    "runtime",
 }
 
 
 def _text_matches(text: str) -> bool:
     low = text.lower()
     return any(term in low for term in _CONTAINER_TERMS)
+
+
+def _attack_object_matches(obj: dict[str, Any]) -> bool:
+    platforms = {str(value).strip().lower() for value in obj.get("x_mitre_platforms") or []}
+    if "containers" in platforms:
+        return True
+    text = " ".join(
+        [
+            str(obj.get("name") or ""),
+            str(obj.get("description") or ""),
+            " ".join(obj.get("x_mitre_data_sources") or []),
+        ]
+    )
+    return _text_matches(text)
 
 
 def _read_origin(path_or_url: str) -> tuple[bytes, str]:
@@ -67,15 +76,7 @@ def _collect_attack_stix(builder: CandidateBundleBuilder, origin: str, max_recor
         attack_id = _attack_id(obj)
         if not attack_id:
             continue
-        text = " ".join(
-            [
-                str(obj.get("name") or ""),
-                str(obj.get("description") or ""),
-                " ".join(obj.get("x_mitre_platforms") or []),
-                " ".join(obj.get("x_mitre_data_sources") or []),
-            ]
-        )
-        if not _text_matches(text):
+        if not _attack_object_matches(obj):
             continue
         description = re.sub(r"\s+", " ", str(obj.get("description") or "")).strip()
         candidate = {
@@ -142,7 +143,13 @@ def _capec_rows(content: bytes, origin: str) -> list[dict[str, str]]:
 
 def _collect_capec(builder: CandidateBundleBuilder, origin: str, max_records: int) -> int:
     content, _ = _read_origin(origin)
-    snapshot = builder.store_raw("CAPEC", content, suffix=Path(origin).suffix or ".zip", media_type="application/zip")
+    is_zip = origin.lower().endswith(".zip") or content[:2] == b"PK"
+    snapshot = builder.store_raw(
+        "CAPEC",
+        content,
+        suffix=Path(origin).suffix or (".zip" if is_zip else ".csv"),
+        media_type="application/zip" if is_zip else "text/csv",
+    )
     count = 0
     for row in _capec_rows(content, origin):
         row_text = " ".join(str(value or "") for value in row.values())
