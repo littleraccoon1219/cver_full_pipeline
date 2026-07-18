@@ -1,0 +1,4 @@
+schema_version: 1
+# Release assets are intentionally not hard-coded to an unverified third-party URL.
+# Add a reviewed internal mirror entry with SHA-256 values, or use build mode.
+assets: []

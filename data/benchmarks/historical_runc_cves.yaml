@@ -1,0 +1,53 @@
+schema_version: 1
+mode: non_destructive_only
+cases:
+  - id: CVE-2024-21626
+    title: runc internal file-descriptor leak and working-directory escape
+    component: runc
+    affected:
+      min_inclusive: "0.0.0"
+      max_inclusive: "1.1.11"
+    fixed_versions:
+      - "1.1.12"
+    fix_commits:
+      - "02120488a4c0fc487d1ed2867e901eeed7ce8ecf"
+    security_invariant: >-
+      A container process must not retain access to runtime-internal host file
+      descriptors or use them to select a host-side working directory.
+    prerequisites:
+      - Linux container runtime based on an affected runc build
+      - A container configuration or lifecycle path that reaches the leaked descriptor
+      - Host-impact proof requires a disposable nested-virtualization laboratory
+    references:
+      - "https://nvd.nist.gov/vuln/detail/CVE-2024-21626"
+      - "https://github.com/opencontainers/runc/releases/tag/v1.1.12"
+    prohibited_in_v1:
+      - real_escape_poc
+      - host_file_access
+      - host_impact_validation
+
+  - id: CVE-2019-5736
+    title: runc host binary overwrite through /proc/self/exe
+    component: runc
+    affected:
+      min_inclusive: "0.0.0"
+      max_inclusive: "1.0.0rc6"
+    fixed_versions:
+      - "1.0.0rc7"
+    fix_commits:
+      - "0a8e4117e7f715d5fbeef398405813ce8e88558b"
+      - "6635b4f0c6af3810594d2770f662f34ddc15b40d"
+    security_invariant: >-
+      A container process must not be able to obtain a writable handle that
+      replaces the host runtime executable.
+    prerequisites:
+      - Linux runc build at or before the affected release range
+      - A container lifecycle action that executes the runtime against attacker-controlled content
+      - Host-impact proof requires a disposable nested-virtualization laboratory
+    references:
+      - "https://nvd.nist.gov/vuln/detail/CVE-2019-5736"
+      - "https://github.com/opencontainers/runc/releases/tag/v1.0.0-rc7"
+    prohibited_in_v1:
+      - runtime_binary_overwrite
+      - real_escape_poc
+      - host_impact_validation

@@ -1,7 +1,12 @@
-fastapi>=0.110
-uvicorn>=0.27
-jinja2>=3.1
-python-multipart>=0.0.9
-pyyaml>=6.0
-pypdf>=5.0,<6.0
-pytest>=8.0
+# Generated from pyproject.toml [project.dependencies].
+fastapi>=0.110,<1
+uvicorn>=0.27,<1
+jinja2>=3.1,<4
+python-multipart>=0.0.9,<1
+pyyaml>=6.0,<7
+pypdf>=5.0,<7
+pydantic>=2.7,<3
+python-dotenv>=1.0,<2
+openai>=1.100,<3
+jsonschema>=4.22,<5
+packaging>=24,<27

@@ -17,6 +17,9 @@ data/staging/
 data/review/
 data/experiments/
 data/releases/
+data/discovery_artifacts/
+data/discovery_workspaces/
+data/CVER_EMERGENCY_STOP
 
 # Generated outputs
 outputs/

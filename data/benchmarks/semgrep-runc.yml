@@ -1,0 +1,25 @@
+rules:
+  - id: cver-runc-open-proc-self-fd
+    languages: [go]
+    severity: WARNING
+    message: >-
+      Review access to /proc/self/fd or /proc/self/exe across a container boundary.
+      This is a candidate observation only, not proof of vulnerability.
+    patterns:
+      - pattern-regex: '/proc/(self|[0-9]+)/(fd|exe)'
+    metadata:
+      cver_stage: candidate_defect
+      category: runtime_boundary
+
+  - id: cver-runc-host-path-join
+    languages: [go]
+    severity: INFO
+    message: >-
+      Review host-root path construction for canonicalization and boundary checks.
+    patterns:
+      - pattern-either:
+          - pattern: filepath.Join($ROOT, $PATH)
+          - pattern: path.Join($ROOT, $PATH)
+    metadata:
+      cver_stage: candidate_defect
+      category: path_resolution
