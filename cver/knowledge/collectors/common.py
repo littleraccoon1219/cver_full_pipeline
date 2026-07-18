@@ -52,7 +52,7 @@ def sha256_file(path: str | Path) -> str:
 
 def stable_id(prefix: str, *parts: str, length: int = 24) -> str:
     digest = hashlib.sha256("\x1f".join(parts).encode("utf-8")).hexdigest()[:length]
-    return f"{prefix}-{digest}"
+    return f"{prefix}-{digest}" #生成确定性 ID
 
 
 def safe_name(value: str, fallback: str = "item") -> str:

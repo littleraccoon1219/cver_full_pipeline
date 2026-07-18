@@ -10,7 +10,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+    sys.path.insert(0, str(REPO_ROOT))  #让脚本能 import 到项目里的其他模块
 
 from cver.knowledge.formal_schema import schema_report, seed_actor, seed_root_cause_taxonomy
 from cver.knowledge.schema import init_trusted_kb
