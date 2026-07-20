@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 from ..models import Evidence, EvidenceBundle, Target
+
 
 class EvidenceBundler:
     def build(self, scan_id: str, target: Target, evidences: list[Evidence], corr: str) -> EvidenceBundle:
@@ -11,6 +13,6 @@ class EvidenceBundler:
             "has_seccomp_unconfined": "unconfined" in text,
             "has_kata_runtimeclass": "kata" in text,
             "runtime_runc_version": "1.1.10" if "1.1.10" in text else "unknown",
-            "evidence_count": len(evidences)
+            "evidence_count": len(evidences),
         }
         return EvidenceBundle(scan_id, target.target_id, evidences, summary, corr)

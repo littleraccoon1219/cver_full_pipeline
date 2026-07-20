@@ -66,7 +66,9 @@ class LLMGateway:
         )
         return response.data
 
-    def plan(self, job_id: str, payload: dict[str, Any], *, classification: DataClass = DataClass.INTERNAL) -> dict[str, Any]:
+    def plan(
+        self, job_id: str, payload: dict[str, Any], *, classification: DataClass = DataClass.INTERNAL
+    ) -> dict[str, Any]:
         return self._invoke(
             job_id=job_id,
             role="planner",
@@ -82,7 +84,9 @@ class LLMGateway:
             classification=classification,
         )
 
-    def critique(self, job_id: str, payload: dict[str, Any], *, classification: DataClass = DataClass.INTERNAL) -> dict[str, Any]:
+    def critique(
+        self, job_id: str, payload: dict[str, Any], *, classification: DataClass = DataClass.INTERNAL
+    ) -> dict[str, Any]:
         return self._invoke(
             job_id=job_id,
             role="critic",
@@ -98,7 +102,9 @@ class LLMGateway:
             classification=classification,
         )
 
-    def summarize(self, job_id: str, payload: dict[str, Any], *, classification: DataClass = DataClass.INTERNAL) -> dict[str, Any]:
+    def summarize(
+        self, job_id: str, payload: dict[str, Any], *, classification: DataClass = DataClass.INTERNAL
+    ) -> dict[str, Any]:
         return self._invoke(
             job_id=job_id,
             role="summary",

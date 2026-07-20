@@ -4,17 +4,10 @@ import ipaddress
 import json
 import re
 from dataclasses import dataclass
-from enum import Enum
 from pathlib import Path
 from typing import Any
 
-
-class DataClass(str, Enum):
-    PUBLIC = "public"
-    INTERNAL = "internal"
-    CONFIDENTIAL = "confidential"
-    RESTRICTED = "restricted"
-
+from ..models import DataClass
 
 _SECRET_PATTERNS = (
     re.compile(r"(?i)(api[_-]?key|token|password|passwd|secret)\s*[:=]\s*[^\s,;]+"),
@@ -25,7 +18,18 @@ _SECRET_PATTERNS = (
         re.DOTALL,
     ),
     re.compile(r"(?i)authorization:\s*bearer\s+[^\s]+"),
+    re.compile(r"\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b"),
+    re.compile(r"\b(?:AKIA|ASIA)[A-Z0-9]{16}\b"),
+    re.compile(r"\b(?:ghp|github_pat)_[A-Za-z0-9_]{20,}\b"),
+    re.compile(r"(?i)(client[_-]?secret|private[_-]?token|access[_-]?token)\s*[:=]\s*[^\s,;]+"),
 )
+
+_EMAIL = re.compile(r"(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}(?![A-Za-z0-9.-])")
+_INTERNAL_HOST = re.compile(r"\b(?:[A-Za-z0-9-]+\.)+(?:internal|local|lan|corp|cluster\.local)\b", re.IGNORECASE)
+_ABSOLUTE_PATH = re.compile(
+    r'(?<![A-Za-z0-9_.-])/(?:home|Users|srv|opt|var/lib|etc/cver|workspace|workspaces)/[^\s"\'<>]{2,}'
+)
+_URL_CREDENTIAL = re.compile(r"(?i)(https?://)([^/@\s:]+):([^/@\s]+)@")
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,7 +43,7 @@ def _replace_private_ips(text: str) -> tuple[str, int]:
     count = 0
     parts: list[str] = []
     for token in re.split(r"(\s+)", text):
-        stripped = token.strip('[](){}<>,;"\'')
+        stripped = token.strip("[](){}<>,;\"'")
         try:
             address = ipaddress.ip_address(stripped)
         except ValueError:
@@ -82,6 +86,14 @@ def sanitize_text(text: str, classification: DataClass) -> SanitizedPayload:
             value, replaced = pattern.subn("<REDACTED_SECRET>", value)
             redactions += replaced
         value, replaced = _replace_private_ips(value)
+        redactions += replaced
+        value, replaced = _EMAIL.subn("<REDACTED_EMAIL>", value)
+        redactions += replaced
+        value, replaced = _INTERNAL_HOST.subn("<INTERNAL_HOST>", value)
+        redactions += replaced
+        value, replaced = _ABSOLUTE_PATH.subn("<INTERNAL_PATH>", value)
+        redactions += replaced
+        value, replaced = _URL_CREDENTIAL.subn(r"\1<REDACTED_CREDENTIALS>@", value)
         redactions += replaced
         home = str(Path.home())
         if home and home != "/":

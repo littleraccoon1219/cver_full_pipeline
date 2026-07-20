@@ -13,8 +13,7 @@ from .common import CandidateBundleBuilder, CollectorError, fetch_bytes, now_iso
 
 COLLECTOR_VERSION = "1.0.0"
 DEFAULT_ATTACK_STIX_URL = (
-    "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/"
-    "enterprise-attack/enterprise-attack.json"
+    "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json"
 )
 _CONTAINER_TERMS = {
     "container",
@@ -114,7 +113,11 @@ def _collect_attack_stix(builder: CandidateBundleBuilder, origin: str, max_recor
             },
             "assertions": [
                 {"predicate": "attack_pattern_name", "object": obj.get("name"), "verification_status": "moderate"},
-                {"predicate": "attack_platforms", "object": obj.get("x_mitre_platforms") or [], "verification_status": "moderate"},
+                {
+                    "predicate": "attack_platforms",
+                    "object": obj.get("x_mitre_platforms") or [],
+                    "verification_status": "moderate",
+                },
             ],
         }
         if builder.add_candidate(candidate):

@@ -1,63 +1,63 @@
 # Acceptance Checklist
 
-## Automated local checks
+Development is staged as M1, M2, and M3. M3 must satisfy the complete system acceptance gate; an M1 pass must not be represented as full 0day-discovery completion.
+
+## M1 — platform foundation
 
 ```bash
-python -m compileall -q cver scripts tests
-pytest -q
-python scripts/migrate_discovery_runtime.py
-python -m cver discovery-doctor --project-root .
+scripts/verify_basic.sh
 ```
 
-## Synthetic evidence gate
+Required outcomes:
 
-Direct fixture check:
+- schema migration reports version 2;
+- the taxonomy contains exactly RC-1 through RC-5, 29 fixed second-level labels, and SP1 through SP13;
+- every non-UNKNOWN primary annotation requires two independent evidence IDs, a causal-role statement, and a passing counterfactual test;
+- candidate collection is content-addressed and does not create trusted labels;
+- immutable experiment digests change when any experiment input changes;
+- the zero-day vault stores no plaintext case material;
+- all tests pass.
+
+Privileged, non-destructive backend checks are separate:
 
 ```bash
-python scripts/lab/run_synthetic_fixture.py benchmarks/synthetic_pathguard
+CVER_ACK_PRIVILEGED_SMOKE=yes scripts/verify_sandbox.sh
 ```
 
-Durable end-to-end benchmark job:
+An unavailable backend must return `skipped_with_reason` with a concrete missing capability. It must not silently fall back to a weaker backend.
 
-```bash
-python -m cver discovery-benchmark --project-root .
-python -m cver discovery-worker --once --project-root .
-python -m cver discovery-list --limit 5
-```
+## M2 — full-stack discovery and verified exploitability
 
-Expected markers:
+M2 acceptance requires real, reviewed adapters for the component registry and cannot be satisfied by interface stubs. It must demonstrate:
 
-- `CVER_SYNTHETIC_REPRODUCED`
-- `SECURITY_INVARIANT_VIOLATION_CONFIRMED`
+- hidden-identity historical vulnerable/fixed pairs;
+- reverse-patch injected samples and ordinary non-security bugs;
+- autonomous current-stable exploration;
+- validated generated test/Fuzz harnesses;
+- unified Docker/Kata/Firecracker execution;
+- adaptive Aya/Tracee evidence capture;
+- deterministic security-property gates;
+- E0-E5 exploitability and L1-L5 attack-chain evidence.
 
-## Backend checks on the ARM64 Ubuntu VM
+## M3 — remediation, disclosure, and Rust-Shyper
 
-```bash
-scripts/lab/smoke_backends.sh docker
-scripts/lab/prepare_kata_image.sh
-scripts/lab/smoke_backends.sh kata
-source "$HOME/cver-lab/firecracker-assets/env.sh"
-scripts/lab/smoke_backends.sh firecracker
-```
+M3 acceptance requires isolated patch/policy application, functional regression, exploit-chain retest, responsible disclosure state transitions, and Rust-Shyper runtime/shim, guest, and hypervisor adapters.
 
-Each unavailable backend must report `skipped_with_reason`; it must not silently use
-another backend. Full historical escape validation is not an acceptance criterion
-until an independent disposable KVM server exists.
-
-## Historical non-destructive replay
-
-```bash
-# CVE-2024-21626 is the default case.
-python -m cver historical-replay \
-  --target "$HOME/cver-lab/sources/runc-current" --project-root .
-python -m cver historical-replay CVE-2019-5736 \
-  --target "$HOME/cver-lab/sources/runc-current" --project-root .
-```
-
-## Emergency-stop acceptance
+## Emergency stop
 
 ```bash
 python -m cver discovery-stop --actor tester --reason "acceptance test"
 python -m cver discovery-worker --once --project-root .; test $? -eq 3
 python -m cver discovery-resume --actor tester --reason "acceptance complete"
 ```
+
+## Escape-lab guard validation
+
+```bash
+CVER_DISPOSABLE_LAB_READY=true \
+CVER_ESCAPE_APPROVAL_DIGEST=<approved-64-hex-digest> \
+CVER_AUTHORIZED_TARGETS=<owned-lab-targets> \
+scripts/verify_escape_lab.sh
+```
+
+M1 ships no L3-L5 escape executor. Passing this guard script proves only that required operator inputs exist.

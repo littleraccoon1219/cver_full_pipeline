@@ -1,0 +1,3 @@
+[console_scripts]
+cver = cver.cli:main
+cver-discovery-worker = cver.discovery.worker:main

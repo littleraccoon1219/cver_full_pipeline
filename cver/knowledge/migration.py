@@ -49,7 +49,7 @@ def import_legacy_seed(
             skipped.append({"index": str(index), "reason": "record_type_or_external_id_not_explicit"})
             continue
 
-        record_id = "REC-" + hashlib.sha256(f"{record_type.value}:{external_id}".encode("utf-8")).hexdigest()[:20]
+        record_id = "REC-" + hashlib.sha256(f"{record_type.value}:{external_id}".encode()).hexdigest()[:20]
         title_en = str(facts.get("title") or facts.get("description") or external_id).strip()
         record = KnowledgeRecord(
             record_id=record_id,

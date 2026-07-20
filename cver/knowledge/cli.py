@@ -12,7 +12,12 @@ from .validation import GoldAdmissionValidator
 
 def init_command(db_path: str) -> dict[str, Any]:
     TrustedKnowledgeRepository(db_path)
-    return {"ok": True, "db_path": str(Path(db_path)), "schema": f"trusted-kb-{SCHEMA_VERSION}", "report": schema_report(db_path)}
+    return {
+        "ok": True,
+        "db_path": str(Path(db_path)),
+        "schema": f"trusted-kb-{SCHEMA_VERSION}",
+        "report": schema_report(db_path),
+    }
 
 
 def validate_command(db_path: str, record_id: str) -> dict[str, Any]:

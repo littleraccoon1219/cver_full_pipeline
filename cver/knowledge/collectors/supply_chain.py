@@ -82,8 +82,16 @@ def collect_supply_chain_incident_candidates(
                 },
                 "assertions": [
                     {"predicate": "incident_title", "object": title, "verification_status": "moderate"},
-                    {"predicate": "event_date", "object": incident.get("event_date"), "verification_status": "moderate"},
-                    {"predicate": "incident_type_candidate", "object": incident.get("incident_type"), "verification_status": "moderate"},
+                    {
+                        "predicate": "event_date",
+                        "object": incident.get("event_date"),
+                        "verification_status": "moderate",
+                    },
+                    {
+                        "predicate": "incident_type_candidate",
+                        "object": incident.get("incident_type"),
+                        "verification_status": "moderate",
+                    },
                 ],
             }
             builder.add_candidate(candidate)

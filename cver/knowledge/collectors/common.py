@@ -4,16 +4,15 @@ import datetime as dt
 import hashlib
 import json
 import mimetypes
-import os
 import re
-import shutil
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import yaml
 
@@ -52,7 +51,7 @@ def sha256_file(path: str | Path) -> str:
 
 def stable_id(prefix: str, *parts: str, length: int = 24) -> str:
     digest = hashlib.sha256("\x1f".join(parts).encode("utf-8")).hexdigest()[:length]
-    return f"{prefix}-{digest}" #生成确定性 ID
+    return f"{prefix}-{digest}"  # 生成确定性 ID
 
 
 def safe_name(value: str, fallback: str = "item") -> str:
@@ -153,7 +152,7 @@ def fetch_bytes(
             if state is not None:
                 state["last_request"] = time.monotonic()
             if attempt + 1 < retries:
-                time.sleep(min(60.0, 2.0 ** attempt * 2.0))
+                time.sleep(min(60.0, 2.0**attempt * 2.0))
     raise CollectorError(f"download failed: {url}: {last_error}")
 
 

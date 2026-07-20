@@ -63,6 +63,8 @@ def build_parser() -> argparse.ArgumentParser:
         default="internal",
         choices=["public", "internal", "confidential", "restricted"],
     )
+    submit.add_argument("--component", default=None)
+    submit.add_argument("--budget", default="balanced", choices=["quick", "balanced", "deep"])
 
     benchmark_submit = sub.add_parser(
         "discovery-benchmark",
@@ -88,7 +90,40 @@ def build_parser() -> argparse.ArgumentParser:
     approval.add_argument("--actor", required=True)
     approval.add_argument("--reason", default="")
     approval.add_argument("--decision", default="approve", choices=["approve", "deny"])
+    approval.add_argument("--experiment-digest", default=None)
+    approval.add_argument("--expires-at", default=None, help="UTC ISO-8601 timestamp")
 
+    sub.add_parser("fullstack-capabilities", help="scan the full cloud-native capability matrix")
+    sub.add_parser("taxonomy-report", help="validate and print the fixed RC1-RC5 and SP1-SP13 taxonomies")
+
+    candidate_ingest = sub.add_parser("candidate-ingest", help="stage raw collected data as an untrusted candidate")
+    candidate_ingest.add_argument("--source-type", required=True)
+    candidate_ingest.add_argument("--component", required=True)
+    candidate_ingest.add_argument("--title", required=True)
+    candidate_ingest.add_argument(
+        "--data-class", default="public", choices=["public", "internal", "confidential", "restricted"]
+    )
+    candidate_ingest.add_argument("--artifact", action="append", required=True, help="KIND=/path/to/file")
+    candidate_ingest.add_argument("--external-id")
+    candidate_ingest.add_argument("--source-url")
+    candidate_ingest.add_argument("--split-group-id")
+
+    candidate_list = sub.add_parser("candidate-list", help="list staged candidate records")
+    candidate_list.add_argument("--limit", type=int, default=100)
+    candidate_list.add_argument("--component")
+    candidate_list.add_argument("--status")
+
+    candidate_annotate = sub.add_parser("candidate-annotate", help="submit a human annotation JSON document")
+    candidate_annotate.add_argument("candidate_id")
+    candidate_annotate.add_argument("--annotation-file", required=True)
+    candidate_annotate.add_argument("--annotator", required=True)
+
+    zero_day = sub.add_parser("zeroday-seal", help="encrypt a suspected zero-day case into the isolated vault")
+    zero_day.add_argument("--file", action="append", required=True)
+    zero_day.add_argument("--metadata-file", required=True)
+    zero_day.add_argument("--actor", required=True)
+    zero_day.add_argument("--job-id")
+    zero_day.add_argument("--hypothesis-id")
 
     stop = sub.add_parser("discovery-stop", help="activate the non-bypassable emergency-stop marker")
     stop.add_argument("--actor", required=True)
@@ -128,9 +163,23 @@ def main() -> None:
     command = args.cmd or "doctor"
 
     if command in {
-        "discovery-init", "discovery-doctor", "discovery-submit", "discovery-benchmark",
-        "discovery-status", "discovery-list", "discovery-approve", "discovery-stop",
-        "discovery-resume", "sandbox-smoke", "historical-replay",
+        "discovery-init",
+        "discovery-doctor",
+        "discovery-submit",
+        "discovery-benchmark",
+        "discovery-status",
+        "discovery-list",
+        "discovery-approve",
+        "discovery-stop",
+        "discovery-resume",
+        "sandbox-smoke",
+        "historical-replay",
+        "fullstack-capabilities",
+        "taxonomy-report",
+        "candidate-ingest",
+        "candidate-list",
+        "candidate-annotate",
+        "zeroday-seal",
     }:
         from .discovery import commands
 
@@ -146,6 +195,8 @@ def main() -> None:
                     risk=args.risk,
                     backend=args.backend,
                     data_class=args.data_class,
+                    component_id=args.component,
+                    budget_profile=args.budget,
                 )
             )
         elif command == "discovery-benchmark":
@@ -155,13 +206,58 @@ def main() -> None:
         elif command == "discovery-list":
             out(commands.list_jobs(args.limit, args.status))
         elif command == "discovery-approve":
-            out(commands.approve(args.job_id, scope=args.scope, actor=args.actor, reason=args.reason, decision=args.decision))
+            out(
+                commands.approve(
+                    args.job_id,
+                    scope=args.scope,
+                    actor=args.actor,
+                    reason=args.reason,
+                    decision=args.decision,
+                    experiment_digest=args.experiment_digest,
+                    expires_at=args.expires_at,
+                )
+            )
         elif command == "discovery-stop":
             out(commands.emergency_stop(actor=args.actor, reason=args.reason))
         elif command == "discovery-resume":
             out(commands.emergency_resume(actor=args.actor, reason=args.reason))
         elif command == "sandbox-smoke":
             out(commands.sandbox_smoke(args.backend, args.project_root))
+        elif command == "fullstack-capabilities":
+            out(commands.capability_matrix())
+        elif command == "taxonomy-report":
+            out(commands.taxonomy_report())
+        elif command == "candidate-ingest":
+            out(
+                commands.ingest_candidate(
+                    source_type=args.source_type,
+                    component_id=args.component,
+                    title=args.title,
+                    data_class=args.data_class,
+                    artifact_specs=args.artifact,
+                    external_id=args.external_id,
+                    source_url=args.source_url,
+                    split_group_id=args.split_group_id,
+                )
+            )
+        elif command == "candidate-list":
+            out(commands.list_candidates(limit=args.limit, component_id=args.component, status=args.status))
+        elif command == "candidate-annotate":
+            out(
+                commands.annotate_candidate(
+                    args.candidate_id, annotation_file=args.annotation_file, annotator=args.annotator
+                )
+            )
+        elif command == "zeroday-seal":
+            out(
+                commands.seal_zero_day_case(
+                    files=args.file,
+                    metadata_file=args.metadata_file,
+                    actor=args.actor,
+                    job_id=args.job_id,
+                    hypothesis_id=args.hypothesis_id,
+                )
+            )
         else:
             out(commands.historical_replay(args.case_id, args.target, args.project_root))
         return
@@ -194,8 +290,8 @@ def main() -> None:
             out(schema_report_command(args.db))
         return
 
-    from .models import Target
     from .legacy.pipeline import CVERPipeline
+    from .models import Target
 
     pipe = CVERPipeline(args.profile or "demo")
     if command == "doctor":
@@ -204,7 +300,14 @@ def main() -> None:
         out(pipe.init_db())
     elif command == "demo":
         result = pipe.demo()
-        out({"ok": True, "scan_id": result["scan"]["scan_id"], "defense_score": result["defense_score"]["total_score"], "report": result["report"]})
+        out(
+            {
+                "ok": True,
+                "scan_id": result["scan"]["scan_id"],
+                "defense_score": result["defense_score"]["total_score"],
+                "report": result["report"],
+            }
+        )
     elif command == "benchmark":
         out(pipe.benchmark())
     elif command in ("full-pipeline", "scan-only", "reason-only", "redteam-only"):
@@ -218,7 +321,14 @@ def main() -> None:
             ),
             command,
         )
-        out({"ok": True, "scan_id": result["scan"]["scan_id"], "defense_score": result.get("defense_score", {}).get("total_score"), "report": result.get("report")})
+        out(
+            {
+                "ok": True,
+                "scan_id": result["scan"]["scan_id"],
+                "defense_score": result.get("defense_score", {}).get("total_score"),
+                "report": result.get("report"),
+            }
+        )
     elif command == "web":
         import uvicorn
 

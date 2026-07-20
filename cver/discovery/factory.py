@@ -8,7 +8,9 @@ from .llm import LLMGateway, LLMProvider, OpenAIProvider
 from .workflow import DiscoveryWorkflow
 
 
-def build_gateway(settings: DiscoverySettings, repository: DiscoveryRepository, provider: LLMProvider | None = None) -> LLMGateway:
+def build_gateway(
+    settings: DiscoverySettings, repository: DiscoveryRepository, provider: LLMProvider | None = None
+) -> LLMGateway:
     settings.validate_runtime(require_llm=provider is None)
     if provider is None:
         provider = OpenAIProvider(

@@ -63,7 +63,9 @@ class TrustedKnowledgeReader:
         clauses = []
         params: list[Any] = []
         for token in tokens:
-            clauses.append("(title_en LIKE ? OR title_zh LIKE ? OR summary_en LIKE ? OR summary_zh LIKE ? OR external_id LIKE ?)")
+            clauses.append(
+                "(title_en LIKE ? OR title_zh LIKE ? OR summary_en LIKE ? OR summary_zh LIKE ? OR external_id LIKE ?)"
+            )
             pattern = f"%{token}%"
             params.extend([pattern] * 5)
         params.append(max(1, min(limit, 50)))

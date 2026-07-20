@@ -208,6 +208,8 @@ def validate_candidate_bundle(bundle_dir: str | Path) -> CandidateBundleValidati
                 warnings.append({"code": "EMPTY_ASSERTION_OBJECT", **assertion_prefix})
 
     if manifest.get("candidate_count") != len(candidates):
-        errors.append({"code": "COUNT_MISMATCH", "manifest": manifest.get("candidate_count"), "actual": len(candidates)})
+        errors.append(
+            {"code": "COUNT_MISMATCH", "manifest": manifest.get("candidate_count"), "actual": len(candidates)}
+        )
     stats = {"candidate_count": len(candidates), "record_type_counts": counts, "manifest": manifest}
     return CandidateBundleValidation(not errors, errors, warnings, stats)

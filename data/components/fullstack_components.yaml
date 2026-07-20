@@ -1,0 +1,108 @@
+registry_id: cver-fullstack-components
+version: 1.0.0
+components:
+  - id: application-dependencies
+    display_name: Application and Dependencies
+    layer: application
+    source_repositories: []
+    languages: [multi]
+    version_matrix: current_plus_user_supplied
+    required_capabilities: [semgrep, trivy, syft]
+    discovery_methods: [sast, dependency_diff, fuzz, runtime_observation]
+  - id: image-supply-chain
+    display_name: Image and Supply Chain
+    layer: supply_chain
+    source_repositories: [https://github.com/moby/buildkit]
+    languages: [go]
+    version_matrix: one_vulnerable_fixed_pair_plus_current
+    required_capabilities: [trivy, syft, docker]
+    discovery_methods: [sbom, provenance_check, parser_fuzz, policy_validation]
+  - id: moby
+    display_name: Docker Moby
+    layer: runtime
+    source_repositories: [https://github.com/moby/moby]
+    languages: [go]
+    version_matrix: vulnerable_fixed_current_custom
+    required_capabilities: [go, docker]
+    discovery_methods: [sast, patch_diff, go_test, go_fuzz, oci_lifecycle]
+  - id: runc
+    display_name: runc
+    layer: runtime
+    source_repositories: [https://github.com/opencontainers/runc]
+    languages: [go]
+    version_matrix: vulnerable_fixed_current_custom
+    required_capabilities: [go, runc]
+    discovery_methods: [sast, patch_diff, go_test, go_fuzz, oci_lifecycle, ebpf_observation]
+  - id: containerd
+    display_name: containerd
+    layer: runtime
+    source_repositories: [https://github.com/containerd/containerd]
+    languages: [go]
+    version_matrix: vulnerable_fixed_current_custom
+    required_capabilities: [go, containerd, ctr]
+    discovery_methods: [sast, patch_diff, go_test, go_fuzz, cri_lifecycle, ebpf_observation]
+  - id: crio-conmon
+    display_name: CRI-O and conmon
+    layer: runtime
+    source_repositories: [https://github.com/cri-o/cri-o, https://github.com/containers/conmon]
+    languages: [go, c]
+    version_matrix: vulnerable_fixed_current_custom
+    required_capabilities: [crio, conmon]
+    discovery_methods: [sast, patch_diff, fuzz, cri_lifecycle, ebpf_observation]
+  - id: kubernetes
+    display_name: Kubernetes
+    layer: orchestration
+    source_repositories: [https://github.com/kubernetes/kubernetes]
+    languages: [go]
+    version_matrix: one_vulnerable_fixed_pair_plus_current
+    required_capabilities: [go, kubectl]
+    discovery_methods: [sast, api_fuzz, admission_diff, rbac_analysis, control_plane_observation]
+  - id: buildkit
+    display_name: BuildKit
+    layer: build
+    source_repositories: [https://github.com/moby/buildkit]
+    languages: [go]
+    version_matrix: one_vulnerable_fixed_pair_plus_current
+    required_capabilities: [go, buildctl]
+    discovery_methods: [sast, parser_fuzz, build_graph_diff, provenance_validation]
+  - id: linux-ebpf
+    display_name: Linux Kernel and eBPF
+    layer: kernel
+    source_repositories: [https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git]
+    languages: [c, rust]
+    version_matrix: current_plus_historical_kernel_or_reverse_patch
+    required_capabilities: [btf, ebpf, bpftool]
+    discovery_methods: [sast, verifier_fuzz, syscall_fuzz, ebpf_observation, kernel_config_analysis]
+  - id: gvisor
+    display_name: gVisor
+    layer: sandbox
+    source_repositories: [https://github.com/google/gvisor]
+    languages: [go]
+    version_matrix: representative_historical_plus_current
+    required_capabilities: [runsc]
+    discovery_methods: [sast, syscall_fuzz, differential_execution, sandbox_observation]
+  - id: kata
+    display_name: Kata Containers
+    layer: microvm
+    source_repositories: [https://github.com/kata-containers/kata-containers]
+    languages: [rust, go]
+    version_matrix: representative_historical_plus_current
+    required_capabilities: [kata, containerd, kvm]
+    discovery_methods: [sast, guest_agent_fuzz, virtio_boundary_test, guest_ebpf_observation]
+  - id: firecracker
+    display_name: Firecracker
+    layer: microvm
+    source_repositories: [https://github.com/firecracker-microvm/firecracker]
+    languages: [rust]
+    version_matrix: representative_historical_plus_current
+    required_capabilities: [firecracker, kvm]
+    discovery_methods: [sast, api_fuzz, device_model_fuzz, guest_host_boundary_test]
+  - id: rust-shyper
+    display_name: Rust-Shyper
+    layer: hypervisor
+    source_repositories: []
+    languages: [rust]
+    version_matrix: adapter_stage_two
+    required_capabilities: [rust_shyper, kvm]
+    discovery_methods: [sast, hypercall_fuzz, virtual_device_fuzz, guest_host_boundary_test]
+    integration_stage: M3

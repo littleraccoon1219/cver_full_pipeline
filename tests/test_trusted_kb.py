@@ -55,9 +55,7 @@ class TrustedKnowledgeTests(unittest.TestCase):
         record.title_en = "Corrected title"
         self.repo.upsert_record(record, changed_by="tester", change_reason="evidence correction")
         with connect(self.db_path) as connection:
-            revisions = connection.execute(
-                "SELECT * FROM kb_record_revisions WHERE record_id='REC-1'"
-            ).fetchall()
+            revisions = connection.execute("SELECT * FROM kb_record_revisions WHERE record_id='REC-1'").fetchall()
         self.assertEqual(1, len(revisions))
         self.assertEqual("evidence correction", revisions[0]["change_reason"])
 
@@ -133,7 +131,16 @@ class TrustedKnowledgeTests(unittest.TestCase):
                 {"predicate": "fixed_versions", "evidence_ids": ["EV-2"]},
                 {"predicate": "root_cause", "evidence_ids": ["EV-3"]},
             ],
-            "experiments": [{"experiment_id": "EXP-1", "validation_level": "L1", "outcome": "confirmed", "status": "completed", "environment_snapshot_id": "ENV-SNAP-1", "observations": [{"type": "precondition_verified"}]}],
+            "experiments": [
+                {
+                    "experiment_id": "EXP-1",
+                    "validation_level": "L1",
+                    "outcome": "confirmed",
+                    "status": "completed",
+                    "environment_snapshot_id": "ENV-SNAP-1",
+                    "observations": [{"type": "precondition_verified"}],
+                }
+            ],
             "unresolved_conflicts": [],
         }
         report = GoldAdmissionValidator().validate(bundle)
@@ -174,7 +181,6 @@ class TrustedKnowledgeTests(unittest.TestCase):
         )
         bundle = self.repo.get_gold_bundle("REC-EV")
         self.assertEqual(["EV-1"], bundle["assertions"][0]["evidence_ids"])
-
 
     def test_legacy_migration_never_promotes_unverified_labels(self) -> None:
         source = Path(self.tmp.name) / "legacy.json"

@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from .models import Assertion, EnvironmentProfile, EvidenceFragment, KnowledgeRecord, RuleDefinition, Source
 from .rules import evaluate_rule
@@ -85,9 +86,7 @@ class TrustedKnowledgeRepository:
         content_hash = _hash(payload)
         now = _now_iso()
         with connect(self.db_path) as connection:
-            current = connection.execute(
-                "SELECT * FROM kb_records WHERE record_id=?", (record.record_id,)
-            ).fetchone()
+            current = connection.execute("SELECT * FROM kb_records WHERE record_id=?", (record.record_id,)).fetchone()
             if current and current["content_hash"] == content_hash:
                 return
             if current:
@@ -518,7 +517,7 @@ class TrustedKnowledgeRepository:
             )
             snapshot_id = snapshot["environment_snapshot_id"] if snapshot else None
             evaluation_id = hashlib.sha256(
-                f"{rule_id}:{version}:{environment_id}:{snapshot_id}:{result.input_hash}".encode("utf-8")
+                f"{rule_id}:{version}:{environment_id}:{snapshot_id}:{result.input_hash}".encode()
             ).hexdigest()[:24]
             connection.execute(
                 """

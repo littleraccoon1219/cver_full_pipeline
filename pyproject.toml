@@ -19,6 +19,7 @@ dependencies = [
   "openai>=1.100,<3",
   "jsonschema>=4.22,<5",
   "packaging>=24,<27",
+  "cryptography>=42,<47",
 ]
 
 [project.optional-dependencies]
@@ -46,3 +47,9 @@ line-length = 120
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+"cver/db.py" = ["E501"]
+"cver/discovery/db.py" = ["E501"]
+"cver/knowledge/schema.py" = ["E501"]
+"cver/knowledge/candidate_importer.py" = ["E501"]

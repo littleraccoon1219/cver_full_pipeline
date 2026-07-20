@@ -1,0 +1,21 @@
+Metadata-Version: 2.4
+Name: cver-full-pipeline
+Version: 0.2.0
+Summary: Evidence-gated container vulnerability evaluation and autonomous discovery pipeline
+Requires-Python: >=3.10
+Requires-Dist: fastapi<1,>=0.110
+Requires-Dist: uvicorn<1,>=0.27
+Requires-Dist: jinja2<4,>=3.1
+Requires-Dist: python-multipart<1,>=0.0.9
+Requires-Dist: pyyaml<7,>=6.0
+Requires-Dist: pypdf<7,>=5.0
+Requires-Dist: pydantic<3,>=2.7
+Requires-Dist: python-dotenv<2,>=1.0
+Requires-Dist: openai<3,>=1.100
+Requires-Dist: jsonschema<5,>=4.22
+Requires-Dist: packaging<27,>=24
+Requires-Dist: cryptography<47,>=42
+Provides-Extra: dev
+Requires-Dist: pytest<10,>=8; extra == "dev"
+Requires-Dist: httpx<1,>=0.27; extra == "dev"
+Requires-Dist: ruff<1,>=0.6; extra == "dev"

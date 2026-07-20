@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator
 
 SCHEMA_VERSION = "1.0.0"
 
@@ -83,7 +83,6 @@ DDL = [
         FOREIGN KEY(actor_id) REFERENCES kb_actors(actor_id)
     )
     """,
-
     # ------------------------------------------------------------------- taxonomy
     """
     CREATE TABLE IF NOT EXISTS kb_taxonomy_versions(
@@ -136,7 +135,6 @@ DDL = [
         FOREIGN KEY(target_node_id) REFERENCES kb_taxonomy_nodes(taxonomy_node_id)
     )
     """,
-
     # --------------------------------------------------------------- core entities
     """
     CREATE TABLE IF NOT EXISTS kb_records(
@@ -308,7 +306,6 @@ DDL = [
         FOREIGN KEY(taxonomy_node_id) REFERENCES kb_taxonomy_nodes(taxonomy_node_id)
     )
     """,
-
     # ----------------------------------------------------------- sources and claims
     """
     CREATE TABLE IF NOT EXISTS kb_sources(
@@ -449,7 +446,6 @@ DDL = [
         FOREIGN KEY(resolved_by) REFERENCES kb_actors(actor_id)
     )
     """,
-
     # ---------------------------------------------------- annotation and review flow
     """
     CREATE TABLE IF NOT EXISTS kb_annotation_tasks(
@@ -518,7 +514,6 @@ DDL = [
         FOREIGN KEY(reviewed_by) REFERENCES kb_actors(actor_id)
     )
     """,
-
     # -------------------------------------------------------- environment and rules
     """
     CREATE TABLE IF NOT EXISTS kb_environments(
@@ -668,7 +663,6 @@ DDL = [
         FOREIGN KEY(assessment_id) REFERENCES kb_exploitability_assessments(assessment_id) ON DELETE CASCADE
     )
     """,
-
     # ------------------------------------------------------------- attack-chain graph
     """
     CREATE TABLE IF NOT EXISTS kb_attack_chains(
@@ -748,7 +742,6 @@ DDL = [
         FOREIGN KEY(assertion_id) REFERENCES kb_assertions(assertion_id)
     )
     """,
-
     # ----------------------------------------------------------- reproducible testing
     """
     CREATE TABLE IF NOT EXISTS kb_experiment_protocols(
@@ -861,7 +854,6 @@ DDL = [
         FOREIGN KEY(evidence_artifact_id) REFERENCES kb_experiment_artifacts(experiment_artifact_id)
     )
     """,
-
     # ---------------------------------------------------------- defense and retesting
     """
     CREATE TABLE IF NOT EXISTS kb_mitigations(
@@ -993,7 +985,6 @@ DDL = [
         FOREIGN KEY(artifact_id) REFERENCES kb_experiment_artifacts(experiment_artifact_id)
     )
     """,
-
     # ------------------------------------------------------------- dataset releases
     """
     CREATE TABLE IF NOT EXISTS kb_dataset_releases(
@@ -1219,22 +1210,73 @@ TRIGGER_DDL = [
 FORMAL_TABLES = tuple(
     name
     for name in (
-        'kb_schema_migrations','kb_actors','kb_ingestion_runs','kb_ingestion_items','kb_audit_events',
-        'kb_taxonomy_versions','kb_taxonomy_nodes','kb_taxonomy_edges','kb_records','kb_record_identifiers',
-        'kb_record_revisions','kb_record_relations','kb_products','kb_components','kb_record_components',
-        'kb_version_ranges','kb_record_taxonomy_assignments','kb_external_taxonomy_mappings','kb_sources',
-        'kb_source_snapshots','kb_evidence_fragments','kb_assertions','kb_assertion_revisions',
-        'kb_assertion_evidence','kb_assertion_conflicts','kb_conflict_assertions','kb_conflict_resolutions',
-        'kb_annotation_tasks','kb_annotation_decisions','kb_annotation_rechecks','kb_gold_admission_reviews','kb_environments',
-        'kb_environment_snapshots','kb_environment_facts','kb_environment_relations','kb_rules',
-        'kb_rule_evidence','kb_rule_evaluations','kb_exploitability_assessments','kb_assessment_inputs',
-        'kb_attack_chains','kb_attack_steps','kb_attack_edges','kb_attack_step_records',
-        'kb_attack_step_conditions','kb_experiment_protocols','kb_experiment_campaigns','kb_experiments',
-        'kb_experiment_steps','kb_experiment_artifacts','kb_experiment_observations','kb_mitigations',
-        'kb_mitigation_targets','kb_mitigation_evidence','kb_defense_policies','kb_policy_validations',
-        'kb_repair_actions','kb_retest_runs','kb_retest_checks','kb_dataset_releases','kb_split_groups',
-        'kb_split_group_members','kb_dataset_memberships','kb_release_artifacts','kb_split_leakage_audits',
-        'kb_quality_check_runs','kb_quality_check_results',
+        "kb_schema_migrations",
+        "kb_actors",
+        "kb_ingestion_runs",
+        "kb_ingestion_items",
+        "kb_audit_events",
+        "kb_taxonomy_versions",
+        "kb_taxonomy_nodes",
+        "kb_taxonomy_edges",
+        "kb_records",
+        "kb_record_identifiers",
+        "kb_record_revisions",
+        "kb_record_relations",
+        "kb_products",
+        "kb_components",
+        "kb_record_components",
+        "kb_version_ranges",
+        "kb_record_taxonomy_assignments",
+        "kb_external_taxonomy_mappings",
+        "kb_sources",
+        "kb_source_snapshots",
+        "kb_evidence_fragments",
+        "kb_assertions",
+        "kb_assertion_revisions",
+        "kb_assertion_evidence",
+        "kb_assertion_conflicts",
+        "kb_conflict_assertions",
+        "kb_conflict_resolutions",
+        "kb_annotation_tasks",
+        "kb_annotation_decisions",
+        "kb_annotation_rechecks",
+        "kb_gold_admission_reviews",
+        "kb_environments",
+        "kb_environment_snapshots",
+        "kb_environment_facts",
+        "kb_environment_relations",
+        "kb_rules",
+        "kb_rule_evidence",
+        "kb_rule_evaluations",
+        "kb_exploitability_assessments",
+        "kb_assessment_inputs",
+        "kb_attack_chains",
+        "kb_attack_steps",
+        "kb_attack_edges",
+        "kb_attack_step_records",
+        "kb_attack_step_conditions",
+        "kb_experiment_protocols",
+        "kb_experiment_campaigns",
+        "kb_experiments",
+        "kb_experiment_steps",
+        "kb_experiment_artifacts",
+        "kb_experiment_observations",
+        "kb_mitigations",
+        "kb_mitigation_targets",
+        "kb_mitigation_evidence",
+        "kb_defense_policies",
+        "kb_policy_validations",
+        "kb_repair_actions",
+        "kb_retest_runs",
+        "kb_retest_checks",
+        "kb_dataset_releases",
+        "kb_split_groups",
+        "kb_split_group_members",
+        "kb_dataset_memberships",
+        "kb_release_artifacts",
+        "kb_split_leakage_audits",
+        "kb_quality_check_runs",
+        "kb_quality_check_results",
     )
 )
 
@@ -1270,57 +1312,79 @@ def _add_column(connection: sqlite3.Connection, table: str, definition: str) -> 
 def _upgrade_mvp_tables(connection: sqlite3.Connection) -> None:
     """Add formal nullable/default columns to an existing 0.1 database without data loss."""
     existing = {r[0] for r in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-    if 'kb_schema_migrations' in existing:
+    if "kb_schema_migrations" in existing:
         for definition in ("checksum TEXT", "notes TEXT"):
-            _add_column(connection, 'kb_schema_migrations', definition)
-    if 'kb_records' in existing:
+            _add_column(connection, "kb_schema_migrations", definition)
+    if "kb_records" in existing:
         for definition in (
-            "canonical_key TEXT", "schema_version TEXT NOT NULL DEFAULT '1.0.0'",
-            "taxonomy_version TEXT", "review_status TEXT NOT NULL DEFAULT 'unreviewed'",
-            "generated_by_model INTEGER NOT NULL DEFAULT 0", "deprecated_reason TEXT", "deleted_at TEXT",
+            "canonical_key TEXT",
+            "schema_version TEXT NOT NULL DEFAULT '1.0.0'",
+            "taxonomy_version TEXT",
+            "review_status TEXT NOT NULL DEFAULT 'unreviewed'",
+            "generated_by_model INTEGER NOT NULL DEFAULT 0",
+            "deprecated_reason TEXT",
+            "deleted_at TEXT",
         ):
-            _add_column(connection, 'kb_records', definition)
-    if 'kb_assertions' in existing:
+            _add_column(connection, "kb_records", definition)
+    if "kb_assertions" in existing:
         for definition in (
-            "assertion_type TEXT NOT NULL DEFAULT 'fact'", "generated_by_model INTEGER NOT NULL DEFAULT 0",
-            "valid_from TEXT", "valid_to TEXT", "supersedes_assertion_id TEXT", "content_hash TEXT",
+            "assertion_type TEXT NOT NULL DEFAULT 'fact'",
+            "generated_by_model INTEGER NOT NULL DEFAULT 0",
+            "valid_from TEXT",
+            "valid_to TEXT",
+            "supersedes_assertion_id TEXT",
+            "content_hash TEXT",
         ):
-            _add_column(connection, 'kb_assertions', definition)
-    if 'kb_evidence_fragments' in existing:
+            _add_column(connection, "kb_assertions", definition)
+    if "kb_evidence_fragments" in existing:
         for definition in ("fragment_type TEXT NOT NULL DEFAULT 'text'", "start_offset INTEGER", "end_offset INTEGER"):
-            _add_column(connection, 'kb_evidence_fragments', definition)
-    if 'kb_environments' in existing:
-        _add_column(connection, 'kb_environments', "environment_type TEXT NOT NULL DEFAULT 'profile'")
-    if 'kb_rules' in existing:
+            _add_column(connection, "kb_evidence_fragments", definition)
+    if "kb_environments" in existing:
+        _add_column(connection, "kb_environments", "environment_type TEXT NOT NULL DEFAULT 'profile'")
+    if "kb_rules" in existing:
         for definition in (
-            "rule_type TEXT NOT NULL DEFAULT 'exploitability'", "status TEXT NOT NULL DEFAULT 'draft'",
-            "logic_version TEXT NOT NULL DEFAULT '1.0'", "created_by TEXT", "supersedes_version TEXT",
+            "rule_type TEXT NOT NULL DEFAULT 'exploitability'",
+            "status TEXT NOT NULL DEFAULT 'draft'",
+            "logic_version TEXT NOT NULL DEFAULT '1.0'",
+            "created_by TEXT",
+            "supersedes_version TEXT",
         ):
-            _add_column(connection, 'kb_rules', definition)
-    if 'kb_experiments' in existing:
+            _add_column(connection, "kb_rules", definition)
+    if "kb_experiments" in existing:
         for definition in (
-            "environment_snapshot_id TEXT", "campaign_id TEXT", "protocol_id TEXT", "protocol_version_ref TEXT",
-            "status TEXT NOT NULL DEFAULT 'completed'", "repeat_index INTEGER NOT NULL DEFAULT 1",
-            "started_at TEXT", "finished_at TEXT",
+            "environment_snapshot_id TEXT",
+            "campaign_id TEXT",
+            "protocol_id TEXT",
+            "protocol_version_ref TEXT",
+            "status TEXT NOT NULL DEFAULT 'completed'",
+            "repeat_index INTEGER NOT NULL DEFAULT 1",
+            "started_at TEXT",
+            "finished_at TEXT",
         ):
-            _add_column(connection, 'kb_experiments', definition)
-    if 'kb_dataset_releases' in existing:
+            _add_column(connection, "kb_experiments", definition)
+    if "kb_dataset_releases" in existing:
         for definition in (
-            "release_name TEXT NOT NULL DEFAULT 'container-security-kb'", "release_version TEXT",
-            "release_status TEXT NOT NULL DEFAULT 'draft'", "released_by TEXT", "content_hash TEXT",
+            "release_name TEXT NOT NULL DEFAULT 'container-security-kb'",
+            "release_version TEXT",
+            "release_status TEXT NOT NULL DEFAULT 'draft'",
+            "released_by TEXT",
+            "content_hash TEXT",
         ):
-            _add_column(connection, 'kb_dataset_releases', definition)
-    if 'kb_dataset_memberships' in existing:
+            _add_column(connection, "kb_dataset_releases", definition)
+    if "kb_dataset_memberships" in existing:
         for definition in (
-            "split_group_id TEXT", "inclusion_reason TEXT", "record_content_hash TEXT", "added_at TEXT",
+            "split_group_id TEXT",
+            "inclusion_reason TEXT",
+            "record_content_hash TEXT",
+            "added_at TEXT",
         ):
-            _add_column(connection, 'kb_dataset_memberships', definition)
-    if 'kb_assertion_evidence' in existing:
+            _add_column(connection, "kb_dataset_memberships", definition)
+    if "kb_assertion_evidence" in existing:
         for definition in ("support_type TEXT NOT NULL DEFAULT 'supports'", "strength REAL", "notes TEXT"):
-            _add_column(connection, 'kb_assertion_evidence', definition)
-    if 'kb_rule_evaluations' in existing:
+            _add_column(connection, "kb_assertion_evidence", definition)
+    if "kb_rule_evaluations" in existing:
         for definition in ("environment_snapshot_id TEXT", "error_json TEXT NOT NULL DEFAULT '{}'"):
-            _add_column(connection, 'kb_rule_evaluations', definition)
+            _add_column(connection, "kb_rule_evaluations", definition)
 
 
 def init_trusted_kb(db_path: str | Path, applied_at: str) -> None:
@@ -1339,7 +1403,7 @@ def init_trusted_kb(db_path: str | Path, applied_at: str) -> None:
             connection.execute(statement)
         connection.execute(
             "INSERT OR IGNORE INTO kb_schema_migrations(version, applied_at, checksum, notes) VALUES(?,?,?,?)",
-            (SCHEMA_VERSION, applied_at, 'formal-schema-1.0.0', 'PhD research formal schema'),
+            (SCHEMA_VERSION, applied_at, "formal-schema-1.0.0", "PhD research formal schema"),
         )
-        connection.execute(f"PRAGMA user_version = 10000")
+        connection.execute("PRAGMA user_version = 10000")
         connection.commit()

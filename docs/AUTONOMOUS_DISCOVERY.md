@@ -1,73 +1,57 @@
-# CVER Autonomous Discovery v1
+# CVER full-stack autonomous discovery
 
-## Purpose
+## System objective
 
-This subsystem adds an evidence-gated, durable discovery loop without replacing the
-existing CVER pipeline. Existing commands continue to use `cver.legacy.pipeline`;
-new commands are prefixed with `discovery-`.
+CVER is designed as a cloud-native full-stack multi-agent system for known-vulnerability analysis and unknown/0day discovery, evidence-gated exploitability determination, controlled attack-chain validation, adaptive remediation, retest, and continuous observation. Rust-Shyper is an M3 test and defense platform, not a prerequisite for building the generic system.
 
-The v1 loop is:
+## Staged implementation
 
-1. inventory a reviewed local target;
-2. read reviewed context from `trusted_knowledge.db` in read-only mode;
-3. ask the planner for bounded hypotheses, never shell commands or exploit payloads;
-4. map experiment kinds to trusted adapters;
-5. enforce the non-bypassable risk/sandbox policy;
-6. persist hypotheses, experiments, approvals, model calls and events in
-   `discovery_runtime.db`;
-7. use a critic and deterministic evidence adjudicator;
-8. produce an auditable JSON report.
+### M1 — governed platform and data foundation
 
-## Evidence promotion
+M1 provides the durable queue, fixed survey-derived taxonomy, SP1-SP13 properties, full-stack registries, candidate/human-label workflow, local hybrid retrieval, immutable approvals, capability matrix, encrypted zero-day case storage, API/CLI, and audit controls.
+
+### M2 — active discovery and exploitability
+
+M2 adds real component-specific static/differential/fuzz/runtime adapters, Docker/Kata/Firecracker execution, Aya/Tracee observation, structured evidence promotion, E0-E5 exploitability, and L1-L5 attack-chain validation.
+
+### M3 — repair and Rust-Shyper
+
+M3 adds isolated adaptive patch/policy application, functional and security retest, responsible disclosure workflow, and Rust-Shyper runtime/shim, guest-agent, hypervisor monitoring and defense adapters.
+
+## Evidence progression
 
 The only valid progression is:
 
-`candidate_defect -> reproducible_bug -> security_vulnerability -> exploitable_zero_day`
+`candidate defect -> reproducible bug -> security vulnerability -> environment exploitable -> attack chain validated -> suspected/confirmed zero-day`
 
-The model cannot assign the final stage. v1 never promotes to `exploitable_zero_day`.
-That stage requires a separate novelty assessment, disposable nested-virtualization
-lab, reviewed impact evidence, and human disclosure approval.
+A model may propose hypotheses and explain evidence. It may not bypass deterministic gates or self-admit a record as trusted ground truth. A security vulnerability must be supported by either a dynamic security-impact path or a source/patch causal path and must violate at least one SP1-SP13 property. Novelty/0day status additionally requires isolated storage, reproducibility, human grading, and responsible disclosure controls.
 
-## Databases
+## Taxonomy contract
 
-- `data/trusted_knowledge.db`: reviewed knowledge and provenance. Discovery opens it
-  read-only and stores only stable record links.
-- `data/discovery_runtime.db`: queue, events, model-call audit records, hypotheses,
-  experiments and approvals.
+The immutable first-level taxonomy is:
 
-Do not merge these databases. Runtime/model output is not trusted knowledge.
+- RC-1 Implementation Correctness Failure;
+- RC-2 Isolation and Resource Boundary Failure;
+- RC-3 Privilege and Security Policy Failure;
+- RC-4 Trust and Integrity Failure;
+- RC-5 Cross-Layer Interaction and Semantic Failure.
 
-## Commands
+Each second-level label defines positive and negative examples, machine signals, evidence combinations, and a counterfactual causal test. One primary second-level cause is selected as the first failed invariant in the minimal causal chain. Secondary causes are unbounded in count but each requires independent evidence and a causal counterfactual.
 
-```bash
-python -m cver discovery-init
-python -m cver discovery-doctor --project-root .
-python -m cver discovery-submit \
-  --target ~/cver-lab/sources/runc-current \
-  --target-kind source \
-  --data-class internal
-python -m cver discovery-benchmark --project-root .
-python -m cver discovery-worker --once --project-root .
-python -m cver discovery-list
-python -m cver discovery-status JOB_ID
-python -m cver discovery-api --host 127.0.0.1 --port 8080
-```
+## Data trust boundary
 
-The worker requires `OPENAI_API_KEY` and `OPENAI_PLANNER_MODEL`. Tests use an
-explicitly injected `FakeProvider`; production code has no automatic fake fallback.
+- Collected records enter the candidate store and are not searchable as trusted few-shot examples.
+- Only human annotations can create trusted labels.
+- Test split groups and related families are excluded from RAG retrieval.
+- Public data may be sent raw to cloud models; internal data is sanitized; confidential/0day content is abstracted to minimum evidence; restricted material is never sent.
+- Suspected zero-day material is encrypted per case and excluded from ordinary RAG/few-shot stores.
 
-## Current adapter boundary
+## Risk and sandbox policy
 
-The durable v1 submission API accepts reviewed local source checkouts and local binary
-artifacts. Image, live-cluster and environment targets are reserved for later adapters;
-the existing legacy pipeline remains available for its current image-oriented flow.
+Composed risk is the maximum of experiment, task, and target risk. Low maps to Docker, medium to Kata, and high/critical to Firecracker. High-risk approvals bind to the canonical hash of source revision, generated code, build artifacts, images, kernel/configuration, network/mount/device policy, resources, and expected validation action.
 
-v1 directly executes only low-risk, fixed adapters such as static version metadata,
-Semgrep, patch metadata and the reviewed synthetic fixture. General binary targets are
-not executed. Active target-specific tests/fuzzing, Tracee collection and historical
-PoC execution remain disabled until reviewed sandbox adapters and backend acceptance
-evidence exist.
+The platform does not weaken the backend silently. Missing capabilities return `skipped_with_reason`.
 
-The emergency-stop marker is checked before job submission, before each workflow
-stage and by the trusted command runner during tool execution. Use `discovery-stop`
-and `discovery-resume` for operator control.
+## Current M1 boundary
+
+M1 does not claim real equal-depth full-stack fuzzing, an Aya production agent, attack-chain exploitation, automatic remediation, or Rust-Shyper integration. Those remain explicit M2/M3 acceptance requirements.

@@ -21,6 +21,42 @@ class RiskLevel(str, Enum):
     CRITICAL = "critical"
 
 
+class DataClass(str, Enum):
+    PUBLIC = "public"
+    INTERNAL = "internal"
+    CONFIDENTIAL = "confidential"
+    RESTRICTED = "restricted"
+
+
+class SecurityStatus(str, Enum):
+    NON_SECURITY_BUG = "NON_SECURITY_BUG"
+    SECURITY_VULNERABILITY = "SECURITY_VULNERABILITY"
+    INDETERMINATE = "INDETERMINATE"
+    BLOCKED_BY_POLICY = "BLOCKED_BY_POLICY"
+
+
+class ClassificationStatus(str, Enum):
+    ACCEPTED = "ACCEPTED"
+    NEEDS_REVIEW = "NEEDS_REVIEW"
+    REJECTED = "REJECTED"
+
+
+class ExploitabilityStatus(str, Enum):
+    EXPLOITABLE = "EXPLOITABLE"
+    NOT_EXPLOITABLE = "NOT_EXPLOITABLE"
+    INDETERMINATE = "INDETERMINATE"
+    BLOCKED_BY_POLICY = "BLOCKED_BY_POLICY"
+
+
+class ExploitabilityLevel(str, Enum):
+    E0 = "E0"  # not affected
+    E1 = "E1"  # version may be affected
+    E2 = "E2"  # environmental preconditions satisfied
+    E3 = "E3"  # trigger reproduced
+    E4 = "E4"  # attack chain established
+    E5 = "E5"  # controlled real escape reproduced
+
+
 class PromotionStage(str, Enum):
     CANDIDATE_DEFECT = "candidate_defect"
     REPRODUCIBLE_BUG = "reproducible_bug"
@@ -103,8 +139,23 @@ class PolicyDecision:
     backend: str | None
     reasons: list[str]
     requires_human_approval: bool = False
+    experiment_digest: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         value = asdict(self)
         value["risk"] = self.risk.value
         return value
+
+
+@dataclass(frozen=True, slots=True)
+class BudgetLimits:
+    profile: str
+    max_duration_seconds: int
+    max_llm_calls: int
+    max_experiments: int
+    fuzz_budget_seconds: int
+    max_deep_experiments: int
+    max_api_cost_usd: float | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)

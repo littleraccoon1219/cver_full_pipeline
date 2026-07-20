@@ -30,6 +30,12 @@ class DiscoverySettings:
     trusted_kb_db: Path = Path("data/trusted_knowledge.db")
     artifacts_dir: Path = Path("data/discovery_artifacts")
     workspace_root: Path = Path("data/discovery_workspaces")
+    candidates_dir: Path = Path("data/candidates")
+    zero_day_vault_dir: Path = Path("data/zero_day_vault")
+    taxonomy_path: Path = Path("taxonomy/root_causes.yaml")
+    security_properties_path: Path = Path("taxonomy/security_properties.yaml")
+    component_registry_path: Path = Path("data/components/fullstack_components.yaml")
+    data_source_registry_path: Path = Path("data/sources/fullstack_sources.yaml")
     emergency_stop_file: Path = Path("data/CVER_EMERGENCY_STOP")
 
     openai_api_key: str | None = None
@@ -37,6 +43,7 @@ class DiscoverySettings:
     planner_model: str | None = None
     critic_model: str | None = None
     summary_model: str | None = None
+    remediation_model: str | None = None
     llm_timeout_seconds: int = 120
     llm_store: bool = False
 
@@ -49,6 +56,9 @@ class DiscoverySettings:
     max_tool_seconds: int = 600
     disposable_lab_ready: bool = False
     allow_historical_poc: bool = False
+    default_budget_profile: str = "balanced"
+    local_embedding_backend: str = "local-hashing-v1"
+    zero_day_key_mode: str = "linux-keyring"
 
     docker_image: str = "alpine:3.20"
     kata_image: str = "docker.io/library/alpine:3.20"
@@ -57,24 +67,38 @@ class DiscoverySettings:
     firecracker_rootfs: Path | None = None
 
     @classmethod
-    def from_env(cls, *, env_file: str | Path | None = ".env", test_mode: bool | None = None) -> "DiscoverySettings":
+    def from_env(cls, *, env_file: str | Path | None = ".env", test_mode: bool | None = None) -> DiscoverySettings:
         if env_file:
             load_dotenv(env_file, override=False)
         resolved_test_mode = _as_bool(os.getenv("CVER_TEST_MODE"), False) if test_mode is None else test_mode
         planner = os.getenv("OPENAI_PLANNER_MODEL")
         critic = os.getenv("OPENAI_CRITIC_MODEL") or planner
         summary = os.getenv("OPENAI_SUMMARY_MODEL") or planner
+        remediation = os.getenv("OPENAI_REMEDIATION_MODEL") or planner
         return cls(
             runtime_db=Path(os.getenv("CVER_DISCOVERY_DB", "data/discovery_runtime.db")),
             trusted_kb_db=Path(os.getenv("CVER_TRUSTED_KB_DB", "data/trusted_knowledge.db")),
             artifacts_dir=Path(os.getenv("CVER_DISCOVERY_ARTIFACTS", "data/discovery_artifacts")),
             workspace_root=Path(os.getenv("CVER_DISCOVERY_WORKSPACES", "data/discovery_workspaces")),
+            candidates_dir=Path(os.getenv("CVER_CANDIDATES_DIR", "data/candidates")),
+            zero_day_vault_dir=Path(os.getenv("CVER_ZERO_DAY_VAULT_DIR", "data/zero_day_vault")),
+            taxonomy_path=Path(os.getenv("CVER_TAXONOMY_PATH", "taxonomy/root_causes.yaml")),
+            security_properties_path=Path(
+                os.getenv("CVER_SECURITY_PROPERTIES_PATH", "taxonomy/security_properties.yaml")
+            ),
+            component_registry_path=Path(
+                os.getenv("CVER_COMPONENT_REGISTRY_PATH", "data/components/fullstack_components.yaml")
+            ),
+            data_source_registry_path=Path(
+                os.getenv("CVER_DATA_SOURCE_REGISTRY_PATH", "data/sources/fullstack_sources.yaml")
+            ),
             emergency_stop_file=Path(os.getenv("CVER_EMERGENCY_STOP_FILE", "data/CVER_EMERGENCY_STOP")),
             openai_api_key=os.getenv("OPENAI_API_KEY"),
             openai_base_url=os.getenv("OPENAI_BASE_URL") or None,
             planner_model=planner,
             critic_model=critic,
             summary_model=summary,
+            remediation_model=remediation,
             llm_timeout_seconds=_as_int(os.getenv("CVER_LLM_TIMEOUT_SECONDS"), 120),
             llm_store=_as_bool(os.getenv("CVER_LLM_STORE"), False),
             api_token=os.getenv("CVER_API_TOKEN"),
@@ -85,11 +109,18 @@ class DiscoverySettings:
             max_tool_seconds=_as_int(os.getenv("CVER_MAX_TOOL_SECONDS"), 600),
             disposable_lab_ready=_as_bool(os.getenv("CVER_DISPOSABLE_LAB_READY"), False),
             allow_historical_poc=_as_bool(os.getenv("CVER_ALLOW_HISTORICAL_POC"), False),
+            default_budget_profile=os.getenv("CVER_DEFAULT_BUDGET_PROFILE", "balanced"),
+            local_embedding_backend=os.getenv("CVER_LOCAL_EMBEDDING_BACKEND", "local-hashing-v1"),
+            zero_day_key_mode=os.getenv("CVER_ZERO_DAY_KEY_MODE", "linux-keyring"),
             docker_image=os.getenv("CVER_DOCKER_IMAGE", "alpine:3.20"),
             kata_image=os.getenv("CVER_KATA_IMAGE", "docker.io/library/alpine:3.20"),
             kata_runtime=os.getenv("CVER_KATA_RUNTIME", "io.containerd.kata.v2"),
-            firecracker_kernel=Path(os.environ["CVER_FIRECRACKER_KERNEL"]) if os.getenv("CVER_FIRECRACKER_KERNEL") else None,
-            firecracker_rootfs=Path(os.environ["CVER_FIRECRACKER_ROOTFS"]) if os.getenv("CVER_FIRECRACKER_ROOTFS") else None,
+            firecracker_kernel=Path(os.environ["CVER_FIRECRACKER_KERNEL"])
+            if os.getenv("CVER_FIRECRACKER_KERNEL")
+            else None,
+            firecracker_rootfs=Path(os.environ["CVER_FIRECRACKER_ROOTFS"])
+            if os.getenv("CVER_FIRECRACKER_ROOTFS")
+            else None,
         )
 
     def emergency_stop_active(self) -> bool:
@@ -107,11 +138,17 @@ class DiscoverySettings:
         if require_api_token and self.api_auth_required and not self.api_token and not self.test_mode:
             raise ConfigurationError("CVER_API_TOKEN is required while API authentication is enabled")
         if self.allow_historical_poc and not self.disposable_lab_ready:
-            raise ConfigurationError(
-                "CVER_ALLOW_HISTORICAL_POC requires CVER_DISPOSABLE_LAB_READY=true"
-            )
+            raise ConfigurationError("CVER_ALLOW_HISTORICAL_POC requires CVER_DISPOSABLE_LAB_READY=true")
+        if self.default_budget_profile not in {"quick", "balanced", "deep"}:
+            raise ConfigurationError("CVER_DEFAULT_BUDGET_PROFILE must be quick, balanced, or deep")
+        if self.zero_day_key_mode not in {"linux-keyring", "environment", "ephemeral"}:
+            raise ConfigurationError("unsupported CVER_ZERO_DAY_KEY_MODE")
+        if self.zero_day_key_mode == "ephemeral" and not self.test_mode and not self.disposable_lab_ready:
+            raise ConfigurationError("ephemeral zero-day keys are allowed only in test mode or disposable labs")
 
     def ensure_directories(self) -> None:
         self.runtime_db.parent.mkdir(parents=True, exist_ok=True)
         self.artifacts_dir.mkdir(parents=True, exist_ok=True)
         self.workspace_root.mkdir(parents=True, exist_ok=True)
+        self.candidates_dir.mkdir(parents=True, exist_ok=True)
+        self.zero_day_vault_dir.mkdir(parents=True, exist_ok=True, mode=0o700)

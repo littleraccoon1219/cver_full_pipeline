@@ -13,18 +13,18 @@ from .schema import FORMAL_TABLES, SCHEMA_VERSION, connect, init_trusted_kb
 def _now_iso() -> str:
     from datetime import datetime, timezone
 
-    return datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 def _canonical_json(value: Any) -> str:
-    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(',', ':'), default=str)
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str)
 
 
 def _hash(value: Any) -> str:
-    return hashlib.sha256(_canonical_json(value).encode('utf-8')).hexdigest()
+    return hashlib.sha256(_canonical_json(value).encode("utf-8")).hexdigest()
 
 
-def seed_actor(db_path: str | Path, actor_id: str, display_name: str, actor_type: str = 'human') -> None:
+def seed_actor(db_path: str | Path, actor_id: str, display_name: str, actor_type: str = "human") -> None:
     now = _now_iso()
     with connect(db_path) as connection:
         connection.execute(
@@ -48,9 +48,9 @@ def seed_root_cause_taxonomy(
     created_by: str | None = None,
 ) -> dict[str, Any]:
     path = Path(taxonomy_path)
-    payload = yaml.safe_load(path.read_text(encoding='utf-8'))
-    taxonomy_version = str(payload['version'])
-    taxonomy_name = str(payload['taxonomy_id'])
+    payload = yaml.safe_load(path.read_text(encoding="utf-8"))
+    taxonomy_version = str(payload["version"])
+    taxonomy_name = str(payload["taxonomy_id"])
     now = _now_iso()
     content_hash = _hash(payload)
     node_count = 0
@@ -69,16 +69,16 @@ def seed_root_cause_taxonomy(
             (
                 taxonomy_version,
                 taxonomy_name,
-                'Container-security root-cause taxonomy used by the formal trusted KB.',
-                'active',
+                "Container-security root-cause taxonomy used by the formal trusted KB.",
+                "active",
                 content_hash,
                 now,
                 created_by,
                 now,
             ),
         )
-        for parent_order, category in enumerate(payload.get('categories') or [], start=1):
-            parent_code = str(category['code'])
+        for parent_order, category in enumerate(payload.get("categories") or [], start=1):
+            parent_code = str(category["code"])
             parent_id = f"TAX-{taxonomy_version}-{parent_code}"
             connection.execute(
                 """
@@ -98,18 +98,18 @@ def seed_root_cause_taxonomy(
                     taxonomy_version,
                     taxonomy_name,
                     parent_code,
-                    'root_cause_l1',
-                    category['name_en'],
-                    category.get('name_zh'),
-                    category.get('definition'),
-                    '[]',
-                    '[]',
+                    "root_cause_l1",
+                    category["name_en"],
+                    category.get("name_zh"),
+                    category.get("definition"),
+                    "[]",
+                    "[]",
                     parent_order,
                 ),
             )
             node_count += 1
-            for child_order, child in enumerate(category.get('children') or [], start=1):
-                child_code = str(child['code'])
+            for child_order, child in enumerate(category.get("children") or [], start=1):
+                child_code = str(child["code"])
                 child_id = f"TAX-{taxonomy_version}-{child_code}"
                 connection.execute(
                     """
@@ -132,23 +132,23 @@ def seed_root_cause_taxonomy(
                         taxonomy_version,
                         taxonomy_name,
                         child_code,
-                        'root_cause_l2',
+                        "root_cause_l2",
                         parent_id,
-                        child['name_en'],
-                        child.get('name_zh'),
-                        child.get('definition'),
-                        _canonical_json(child.get('include') or []),
-                        _canonical_json(child.get('exclude') or []),
+                        child["name_en"],
+                        child.get("name_zh"),
+                        child.get("definition"),
+                        _canonical_json(child.get("include") or []),
+                        _canonical_json(child.get("exclude") or []),
                         parent_order * 100 + child_order,
                     ),
                 )
                 node_count += 1
         connection.commit()
     return {
-        'taxonomy_version': taxonomy_version,
-        'taxonomy_name': taxonomy_name,
-        'content_hash': content_hash,
-        'nodes': node_count,
+        "taxonomy_version": taxonomy_version,
+        "taxonomy_name": taxonomy_name,
+        "content_hash": content_hash,
+        "nodes": node_count,
     }
 
 
@@ -162,29 +162,27 @@ def schema_report(db_path: str | Path) -> dict[str, Any]:
             ORDER BY type, name
             """
         ).fetchall()
-        tables = [row['name'] for row in objects if row['type'] == 'table']
-        views = [row['name'] for row in objects if row['type'] == 'view']
-        triggers = [row['name'] for row in objects if row['type'] == 'trigger']
+        tables = [row["name"] for row in objects if row["type"] == "table"]
+        views = [row["name"] for row in objects if row["type"] == "view"]
+        triggers = [row["name"] for row in objects if row["type"] == "trigger"]
         row_counts = {}
         for table in FORMAL_TABLES:
             if table in tables:
-                row_counts[table] = connection.execute(f'SELECT COUNT(*) AS n FROM {table}').fetchone()['n']
-        foreign_key_errors = [dict(row) for row in connection.execute('PRAGMA foreign_key_check').fetchall()]
+                row_counts[table] = connection.execute(f"SELECT COUNT(*) AS n FROM {table}").fetchone()["n"]
+        foreign_key_errors = [dict(row) for row in connection.execute("PRAGMA foreign_key_check").fetchall()]
         migration_versions = [
             dict(row)
-            for row in connection.execute(
-                'SELECT * FROM kb_schema_migrations ORDER BY applied_at, version'
-            ).fetchall()
+            for row in connection.execute("SELECT * FROM kb_schema_migrations ORDER BY applied_at, version").fetchall()
         ]
     return {
-        'schema_version': SCHEMA_VERSION,
-        'expected_table_count': len(FORMAL_TABLES),
-        'present_formal_table_count': len(set(tables) & set(FORMAL_TABLES)),
-        'missing_tables': sorted(set(FORMAL_TABLES) - set(tables)),
-        'extra_kb_tables': sorted(set(tables) - set(FORMAL_TABLES)),
-        'views': views,
-        'triggers': triggers,
-        'foreign_key_errors': foreign_key_errors,
-        'migrations': migration_versions,
-        'row_counts': row_counts,
+        "schema_version": SCHEMA_VERSION,
+        "expected_table_count": len(FORMAL_TABLES),
+        "present_formal_table_count": len(set(tables) & set(FORMAL_TABLES)),
+        "missing_tables": sorted(set(FORMAL_TABLES) - set(tables)),
+        "extra_kb_tables": sorted(set(tables) - set(FORMAL_TABLES)),
+        "views": views,
+        "triggers": triggers,
+        "foreign_key_errors": foreign_key_errors,
+        "migrations": migration_versions,
+        "row_counts": row_counts,
     }

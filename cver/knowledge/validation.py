@@ -24,8 +24,7 @@ class ValidationReport:
         return {
             "eligible": self.eligible,
             "issues": [
-                {"code": issue.code, "message": issue.message, "severity": issue.severity}
-                for issue in self.issues
+                {"code": issue.code, "message": issue.message, "severity": issue.severity} for issue in self.issues
             ],
             "checks": self.checks,
         }
@@ -87,7 +86,12 @@ class GoldAdmissionValidator:
             "has_validated_experiment": bool(validated_experiments),
         }
 
-        required_common = ["has_primary_source", "has_verified_root_cause", "has_root_cause_labels", "has_field_evidence"]
+        required_common = [
+            "has_primary_source",
+            "has_verified_root_cause",
+            "has_root_cause_labels",
+            "has_field_evidence",
+        ]
         for check in required_common:
             if not checks[check]:
                 issues.append(ValidationIssue(check.upper(), f"Gold admission failed: {check}"))
@@ -107,18 +111,31 @@ class GoldAdmissionValidator:
                 if not checks[check]:
                     issues.append(ValidationIssue(check.upper(), f"Misconfiguration Gold admission failed: {check}"))
         elif record_type in {RecordType.ATTACK_PATTERN.value, RecordType.SUPPLY_CHAIN_INCIDENT.value}:
-            has_authoritative_case = bool({"peer_reviewed_paper", "incident_report", "official_advisory"} & source_types)
+            has_authoritative_case = bool(
+                {"peer_reviewed_paper", "incident_report", "official_advisory"} & source_types
+            )
             checks["has_authoritative_case"] = has_authoritative_case
             if not has_authoritative_case:
-                issues.append(ValidationIssue("AUTHORITATIVE_CASE_REQUIRED", "Attack pattern or incident requires a paper, incident report, or official advisory"))
+                issues.append(
+                    ValidationIssue(
+                        "AUTHORITATIVE_CASE_REQUIRED",
+                        "Attack pattern or incident requires a paper, incident report, or official advisory",
+                    )
+                )
         else:
             issues.append(ValidationIssue("UNKNOWN_RECORD_TYPE", f"Unsupported record type: {record_type}"))
 
         if record.get("generated_by_model"):
-            issues.append(ValidationIssue("MODEL_GENERATED_GOLD_FORBIDDEN", "Gold facts must not be generated or decided by a model"))
+            issues.append(
+                ValidationIssue(
+                    "MODEL_GENERATED_GOLD_FORBIDDEN", "Gold facts must not be generated or decided by a model"
+                )
+            )
 
         unresolved = bundle.get("unresolved_conflicts", [])
         if unresolved:
             issues.append(ValidationIssue("UNRESOLVED_CONFLICTS", "Record has unresolved source conflicts"))
 
-        return ValidationReport(eligible=not any(issue.severity == "error" for issue in issues), issues=issues, checks=checks)
+        return ValidationReport(
+            eligible=not any(issue.severity == "error" for issue in issues), issues=issues, checks=checks
+        )

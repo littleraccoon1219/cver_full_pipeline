@@ -5,8 +5,8 @@ import signal
 import subprocess
 import tempfile
 import time
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
-from typing import Callable, Mapping, Sequence
 
 from ..models import ToolResult
 
@@ -77,9 +77,10 @@ class CommandRunner:
         merged_env = os.environ.copy()
         if env:
             merged_env.update({str(key): str(value) for key, value in env.items()})
-        with tempfile.TemporaryFile(mode="w+t", encoding="utf-8", errors="replace") as stdout_file, tempfile.TemporaryFile(
-            mode="w+t", encoding="utf-8", errors="replace"
-        ) as stderr_file:
+        with (
+            tempfile.TemporaryFile(mode="w+t", encoding="utf-8", errors="replace") as stdout_file,
+            tempfile.TemporaryFile(mode="w+t", encoding="utf-8", errors="replace") as stderr_file,
+        ):
             try:
                 process = subprocess.Popen(
                     argv,

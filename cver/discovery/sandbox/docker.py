@@ -22,7 +22,9 @@ class DockerBackend:
         return BackendAvailability(
             self.name,
             result.status == "succeeded",
-            "available" if result.status == "succeeded" else (result.reason or result.stderr.strip() or "docker daemon unavailable"),
+            "available"
+            if result.status == "succeeded"
+            else (result.reason or result.stderr.strip() or "docker daemon unavailable"),
             {"server_version": result.stdout.strip()},
         )
 
@@ -32,10 +34,25 @@ class DockerBackend:
             return ToolResult("skipped_with_reason", "docker", [], None, "", "", 0, reason=available.reason)
         return self.runner.run(
             [
-                "docker", "run", "--rm", "--network", "none", "--read-only",
-                "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
-                "--pids-limit", "64", "--memory", "128m", "--cpus", "0.5",
-                self.settings.docker_image, "/bin/echo", "CVER_DOCKER_SMOKE_OK",
+                "docker",
+                "run",
+                "--rm",
+                "--network",
+                "none",
+                "--read-only",
+                "--cap-drop",
+                "ALL",
+                "--security-opt",
+                "no-new-privileges",
+                "--pids-limit",
+                "64",
+                "--memory",
+                "128m",
+                "--cpus",
+                "0.5",
+                self.settings.docker_image,
+                "/bin/echo",
+                "CVER_DOCKER_SMOKE_OK",
             ],
             tool="docker-smoke",
             timeout_seconds=90,

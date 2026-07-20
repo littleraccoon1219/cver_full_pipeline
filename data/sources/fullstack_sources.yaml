@@ -1,0 +1,44 @@
+source_registry_id: cver-fullstack-data-sources
+version: 1.0.0
+sources:
+  - id: cve
+    type: vulnerability_advisory
+    trust_tier: official
+    data_class: public
+    enabled: true
+  - id: ghsa
+    type: vulnerability_advisory
+    trust_tier: official
+    data_class: public
+    enabled: true
+  - id: vendor-advisory
+    type: vulnerability_advisory
+    trust_tier: official
+    data_class: public
+    enabled: true
+  - id: upstream-security-commit
+    type: source_patch
+    trust_tier: upstream
+    data_class: public
+    enabled: true
+  - id: upstream-security-issue
+    type: issue
+    trust_tier: upstream
+    data_class: public
+    enabled: true
+  - id: upstream-nonsecurity-bug
+    type: negative_sample
+    trust_tier: upstream
+    data_class: public
+    enabled: true
+  - id: reverse-patch-fixture
+    type: injected_fixture
+    trust_tier: controlled_lab
+    data_class: internal
+    enabled: true
+  - id: model-generated-mutation
+    type: injected_fixture
+    trust_tier: untrusted_candidate
+    data_class: confidential
+    enabled: false
+    admission: requires_compile_dynamic_and_human_review

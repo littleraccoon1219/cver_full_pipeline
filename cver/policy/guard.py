@@ -54,7 +54,11 @@ class PolicyGuard:
         if level not in ("dry-run", "safe-exec", "lab-emulation"):
             allowed = False
             reasons.append(f"execution level {level} is not allowed")
-        if level != "dry-run" and self.profile.get("redteam", {}).get("require_human_confirm", True) and not human_confirm:
+        if (
+            level != "dry-run"
+            and self.profile.get("redteam", {}).get("require_human_confirm", True)
+            and not human_confirm
+        ):
             allowed = False
             reasons.append("human confirmation required for non-dry-run")
         record = {

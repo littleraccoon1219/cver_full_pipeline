@@ -166,7 +166,9 @@ def evaluate_expression(expression: dict[str, Any], facts: dict[str, Any]) -> tu
     return result, [root_trace]
 
 
-def evaluate_rule(rule_id: str, environment_id: str, expression: dict[str, Any], facts: dict[str, Any]) -> RuleEvaluation:
+def evaluate_rule(
+    rule_id: str, environment_id: str, expression: dict[str, Any], facts: dict[str, Any]
+) -> RuleEvaluation:
     result, trace = evaluate_expression(expression, facts)
     canonical = json.dumps({"expression": expression, "facts": facts}, sort_keys=True, ensure_ascii=False, default=str)
     return RuleEvaluation(

@@ -21,8 +21,8 @@ class FakeProvider:
                 "hypotheses": [
                     {
                         "title": "Synthetic path boundary candidate",
-                        "root_cause_l1": "runtime_boundary",
-                        "root_cause_l2": "path_canonicalization",
+                        "root_cause_l1": "RC-1",
+                        "root_cause_l2": "RC-1.2",
                         "security_boundary": "sandbox root",
                         "invariant": "resolved paths remain beneath the sandbox root",
                         "rationale": "A deterministic synthetic fixture can test the evidence gate.",
@@ -58,6 +58,8 @@ def settings(tmp_path: Path) -> DiscoverySettings:
         trusted_kb_db=tmp_path / "trusted.db",
         artifacts_dir=tmp_path / "artifacts",
         workspace_root=tmp_path / "workspaces",
+        candidates_dir=tmp_path / "candidates",
+        zero_day_vault_dir=tmp_path / "zero_day_vault",
         emergency_stop_file=tmp_path / "EMERGENCY_STOP",
         planner_model="planner-test",
         critic_model="critic-test",

@@ -30,7 +30,9 @@ class KataBackend:
         return BackendAvailability(
             self.name,
             check.status == "succeeded",
-            "available" if check.status == "succeeded" else (check.reason or check.stderr.strip() or "kata-runtime check failed"),
+            "available"
+            if check.status == "succeeded"
+            else (check.reason or check.stderr.strip() or "kata-runtime check failed"),
             {"runtime": runtime, "shim": shim, "runtime_type": self.settings.kata_runtime},
         )
 

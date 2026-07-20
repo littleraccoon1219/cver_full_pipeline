@@ -3,20 +3,34 @@ from __future__ import annotations
 import argparse
 import os
 import socket
+import sqlite3
 import time
 import traceback
+from collections.abc import Iterator
 from contextlib import contextmanager
 from threading import Event, Thread
-from typing import Iterator
 
 from .config import DiscoverySettings
 from .db import DiscoveryRepository
+from .errors import ConfigurationError, EmergencyStopActive, PolicyDenied
 from .factory import build_workflow
 from .models import JobStatus
 
 
 def worker_id() -> str:
     return f"{socket.gethostname()}:{os.getpid()}"
+
+
+def is_retryable_exception(exc: Exception) -> bool:
+    if isinstance(exc, (ConfigurationError, EmergencyStopActive, PolicyDenied, ValueError, FileNotFoundError)):
+        return False
+    if isinstance(exc, (TimeoutError, ConnectionError, sqlite3.OperationalError)):
+        return True
+    text = str(exc).lower()
+    return any(
+        marker in text
+        for marker in ["timeout", "timed out", "rate limit", "temporarily unavailable", "connection reset"]
+    )
 
 
 @contextmanager
@@ -77,7 +91,7 @@ def run_worker(*, once: bool = False, project_root: str = ".") -> int:
             repository.finish_job(job.job_id, result, status=terminal)
         except Exception as exc:  # worker boundary: persist the complete failure
             detail = f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}"
-            repository.fail_job(job.job_id, detail, retryable=False)
+            repository.fail_job(job.job_id, detail, retryable=is_retryable_exception(exc))
         if once:
             return 0
 

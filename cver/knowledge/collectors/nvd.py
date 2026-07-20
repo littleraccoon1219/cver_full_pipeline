@@ -4,8 +4,9 @@ import datetime as dt
 import json
 import os
 import urllib.parse
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from ..source_discovery import classify_reference_url
 from .common import CandidateBundleBuilder, CollectorError, fetch_bytes, load_yaml, now_iso
@@ -271,5 +272,7 @@ def collect_nvd_candidates(
     manifest = builder.finalize()
     manifest["bucket_counts"] = bucket_counts
     manifest_path = Path(output_dir) / "manifest.json"
-    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    manifest_path.write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
     return manifest

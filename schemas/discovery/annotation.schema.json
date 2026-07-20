@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cver.local/schemas/discovery/annotation.schema.json",
+  "title": "CVER Human Root-Cause Annotation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "taxonomy_version",
+    "security_status",
+    "primary_root_cause",
+    "primary_secondary_root_cause",
+    "secondary_root_causes",
+    "secondary_security_properties",
+    "evidence_ids",
+    "rationale",
+    "status",
+    "classification_status",
+    "primary_causal_role",
+    "primary_counterfactual_changes_outcome"
+  ],
+  "properties": {
+    "taxonomy_version": {
+      "const": "1.0.0"
+    },
+    "security_status": {
+      "enum": [
+        "NON_SECURITY_BUG",
+        "SECURITY_VULNERABILITY",
+        "INDETERMINATE",
+        "BLOCKED_BY_POLICY"
+      ]
+    },
+    "primary_root_cause": {
+      "pattern": "^(RC-[1-5]|UNKNOWN)$"
+    },
+    "primary_secondary_root_cause": {
+      "pattern": "^(RC-[1-5]\\.[1-6]|UNKNOWN)$"
+    },
+    "secondary_root_causes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "evidence_ids",
+          "causal_role",
+          "counterfactual_changes_outcome"
+        ],
+        "properties": {
+          "code": {
+            "pattern": "^RC-[1-5]\\.[1-6]$"
+          },
+          "evidence_ids": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "causal_role": {
+            "type": "string",
+            "minLength": 1
+          },
+          "counterfactual_changes_outcome": {
+            "const": true
+          }
+        }
+      }
+    },
+    "primary_security_property": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^SP([1-9]|1[0-3])$"
+    },
+    "secondary_security_properties": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "pattern": "^SP([1-9]|1[0-3])$"
+      }
+    },
+    "evidence_ids": {
+      "type": "array",
+      "minItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      }
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 1
+    },
+    "classification_status": {
+      "enum": [
+        "ACCEPTED",
+        "NEEDS_REVIEW",
+        "REJECTED"
+      ]
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "reviewed",
+        "gold"
+      ]
+    },
+    "primary_causal_role": {
+      "type": "string",
+      "minLength": 1
+    },
+    "primary_counterfactual_changes_outcome": {
+      "const": true
+    }
+  }
+}

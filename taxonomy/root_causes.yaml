@@ -1,207 +1,1086 @@
 taxonomy_id: cver-root-cause
-version: 0.1.0
+version: 1.0.0
 language_policy: canonical_codes_en_bilingual_labels
 categories:
-  - code: RC-1
-    name_en: Implementation Correctness Failure
-    name_zh: 实现正确性失效
-    definition: 单个组件对内存、输入、状态、并发或资源生命周期的实现不满足安全不变量。
-    children:
-      - code: RC-1.1
-        name_en: Memory and Numeric Error
-        name_zh: 内存与数值计算错误
-        definition: 内存访问、释放、类型或数值计算错误形成利用原语。
-        include: [out-of-bounds, use-after-free, integer-overflow, type-confusion]
-        exclude: [shared-cache-side-channel, resource-quota-misconfiguration]
-      - code: RC-1.2
-        name_en: Input Parsing and Canonicalization Error
-        name_zh: 输入解析与规范化错误
-        definition: 输入、路径、镜像、协议或配置解析与规范化不正确。
-        include: [path-traversal, command-injection, unsafe-deserialization, ambiguous-parsing]
-        exclude: [untrusted-image-admission, rbac-overpermission]
-      - code: RC-1.3
-        name_en: Concurrency and Ordering Error
-        name_zh: 并发、时序与原子性错误
-        definition: 检查、使用、初始化或状态更新之间的顺序与同步错误。
-        include: [race-condition, toctou, non-atomic-update]
-        exclude: [cross-component-state-semantic-mismatch]
-      - code: RC-1.4
-        name_en: State Management Error
-        name_zh: 状态管理错误
-        definition: 组件内部状态机、缓存、初始化或恢复过程不正确。
-        include: [invalid-state-transition, stale-cache, incomplete-initialization]
-        exclude: [host-guest-state-disagreement]
-      - code: RC-1.5
-        name_en: Resource and Object Lifecycle Error
-        name_zh: 资源与对象生命周期错误
-        definition: 文件描述符、挂载点、进程、句柄或临时资源创建、继承和销毁错误。
-        include: [file-descriptor-leak, stale-handle, incomplete-cleanup]
-        exclude: [quota-policy-missing]
-      - code: RC-1.6
-        name_en: Exception Handling and Recovery Error
-        name_zh: 异常处理与错误恢复错误
-        definition: 异常路径、回滚或失败恢复不完整并留下不安全状态。
-        include: [incomplete-rollback, ignored-error, unsafe-recovery]
-        exclude: [intentional-fail-open-policy]
-
-  - code: RC-2
-    name_en: Isolation and Resource Boundary Failure
-    name_zh: 隔离与资源边界失效
-    definition: 本应相互隔离的执行域、资源域、租户域或硬件状态发生非预期共享或越界。
-    children:
-      - code: RC-2.1
-        name_en: Namespace and Process Boundary Failure
-        name_zh: Namespace与进程边界失效
-        definition: 进程、用户、网络、IPC或其他命名空间隔离不完整或被绕过。
-        include: [namespace-leak, uid-map-bypass, process-visibility]
-        exclude: [rbac-overpermission]
-      - code: RC-2.2
-        name_en: Filesystem Mount and Device Boundary Failure
-        name_zh: 文件系统、挂载与设备边界失效
-        definition: 宿主文件、挂载点、设备或套接字被错误暴露给隔离域。
-        include: [host-filesystem-exposure, device-exposure, mount-boundary-bypass]
-        exclude: [operator-configured-hostpath]
-      - code: RC-2.3
-        name_en: Syscall and Kernel Attack-Surface Boundary Failure
-        name_zh: 系统调用与内核攻击面边界失效
-        definition: 工作负载获得了超出预期的宿主内核接口或系统调用攻击面。
-        include: [syscall-filter-bypass, kernel-interface-exposure]
-        exclude: [seccomp-policy-not-configured]
-      - code: RC-2.4
-        name_en: Resource Accounting and Quota Boundary Failure
-        name_zh: 资源计量与配额边界失效
-        definition: CPU、内存、PID、磁盘或网络资源未被正确隔离、计量或约束。
-        include: [cgroup-bypass, cross-tenant-resource-exhaustion]
-        exclude: [operator-omitted-resource-limit]
-      - code: RC-2.5
-        name_en: Guest Host and Virtual Device Boundary Failure
-        name_zh: Guest—Host与虚拟设备边界失效
-        definition: microVM、VMM、共享文件系统或虚拟设备没有维持Guest与Host隔离。
-        include: [vmm-escape, virtio-boundary-bypass, shared-fs-escape]
-        exclude: [host-agent-semantic-privilege-amplification]
-      - code: RC-2.6
-        name_en: Hardware and Microarchitectural Sharing Failure
-        name_zh: 硬件与微架构共享状态失效
-        definition: 缓存、分支预测、SMT、DMA或其他硬件共享状态泄露或干扰安全域。
-        include: [cache-side-channel, speculative-execution, dma-isolation-failure]
-        exclude: [software-out-of-bounds-access]
-
-  - code: RC-3
-    name_en: Privilege and Security Policy Failure
-    name_zh: 权限与安全策略失效
-    definition: 身份、权限、策略或安全默认值的定义、配置或执行不符合最小权限原则。
-    children:
-      - code: RC-3.1
-        name_en: Authentication and Identity Mapping Error
-        name_zh: 身份认证与身份映射错误
-        definition: 身份认证、主体绑定或跨域身份映射不正确。
-        include: [authentication-bypass, uid-gid-mapping-error]
-        exclude: [authorization-policy-overpermission]
-      - code: RC-3.2
-        name_en: Authorization and RBAC Error
-        name_zh: 授权与RBAC错误
-        definition: API、对象或集群权限检查缺失、错误或授权范围过大。
-        include: [missing-authorization, rbac-overpermission, service-account-abuse]
-        exclude: [capability-overgrant]
-      - code: RC-3.3
-        name_en: Capability and Privilege Management Error
-        name_zh: Capability与特权管理错误
-        definition: Linux Capability、特权容器或宿主权限被错误授予或继承。
-        include: [privileged-container, cap-sys-admin, privilege-inheritance]
-        exclude: [namespace-implementation-bypass]
-      - code: RC-3.4
-        name_en: Security Policy Absence or Enforcement Failure
-        name_zh: 安全策略缺失或执行失效
-        definition: seccomp、LSM、NetworkPolicy、Admission等策略缺失、未加载或未执行。
-        include: [seccomp-disabled, admission-bypass, policy-fail-open]
-        exclude: [policy-parser-memory-corruption]
-      - code: RC-3.5
-        name_en: Insecure Default
-        name_zh: 不安全默认值
-        definition: 产品默认配置在常规部署下授予过多权限或暴露危险接口。
-        include: [anonymous-access-default, unsafe-listen-default]
-        exclude: [operator-overrides-secure-default]
-      - code: RC-3.6
-        name_en: Operator Misconfiguration
-        name_zh: 操作者错误配置
-        definition: 管理员或部署者设置了超出业务需要的权限、挂载、网络或策略。
-        include: [docker-socket-mount, hostpath-root, hostpid, missing-resource-limit]
-        exclude: [product-code-authorization-bug]
-
-  - code: RC-4
-    name_en: Trust and Integrity Failure
-    name_zh: 信任与完整性失效
-    definition: 系统错误信任了镜像、制品、依赖、凭据、更新或证明材料。
-    children:
-      - code: RC-4.1
-        name_en: Image and Artifact Integrity Failure
-        name_zh: 镜像与制品完整性失效
-        definition: 镜像或制品来源、摘要、签名或内容完整性未被正确验证。
-        include: [unsigned-image, mutable-tag, digest-not-pinned]
-        exclude: [image-parser-memory-corruption]
-      - code: RC-4.2
-        name_en: Registry and Distribution Trust Failure
-        name_zh: Registry与分发链信任失效
-        definition: Registry、镜像传输、代理或分发过程的信任边界不正确。
-        include: [untrusted-registry, distribution-tampering, tls-validation-error]
-        exclude: [rbac-registry-permission]
-      - code: RC-4.3
-        name_en: Dependency Build and Supply-Chain Failure
-        name_zh: 依赖、构建与供应链失效
-        definition: 依赖解析、构建环境、插件或发布流水线被污染或无法证明来源。
-        include: [dependency-confusion, compromised-builder, malicious-plugin]
-        exclude: [runtime-container-escape]
-      - code: RC-4.4
-        name_en: Credential Key and Certificate Failure
-        name_zh: 凭据、密钥与证书信任失效
-        definition: Secret、密钥、令牌和证书的存储、分发、轮换或验证错误。
-        include: [secret-exposure, certificate-validation-error, token-scope-error]
-        exclude: [service-account-rbac-overpermission]
-      - code: RC-4.5
-        name_en: Update Provenance and Attestation Failure
-        name_zh: 更新、来源证明与Attestation失效
-        definition: 更新、SBOM、VEX、provenance或远程证明结果缺失、失真或未校验。
-        include: [unverified-update, provenance-missing, attestation-bypass]
-        exclude: [update-parser-implementation-bug]
-
-  - code: RC-5
-    name_en: Cross-Layer Interaction and Semantic Failure
-    name_zh: 跨层交互与语义失配
-    definition: 多个组件对身份、权限、路径、状态、生命周期或操作语义理解不一致，组合后产生安全缺陷。
-    children:
-      - code: RC-5.1
-        name_en: Identity and Privilege Semantic Mismatch
-        name_zh: 身份与权限语义失配
-        definition: Host、Guest、Kubernetes和Runtime对主体身份或权限含义理解不同。
-        include: [cross-layer-uid-mismatch, privilege-translation-error]
-        exclude: [single-component-authentication-bypass]
-      - code: RC-5.2
-        name_en: Path Mount and File Semantic Mismatch
-        name_zh: 路径、挂载与文件语义失配
-        definition: 不同层对路径根、符号链接、挂载或文件属性解释不一致。
-        include: [host-guest-path-mismatch, cri-oci-mount-translation-error]
-        exclude: [single-parser-path-traversal]
-      - code: RC-5.3
-        name_en: Lifecycle and State Synchronization Mismatch
-        name_zh: 生命周期与状态同步失配
-        definition: kubelet、shim、runtime、agent或VMM对对象状态与生命周期认识不一致。
-        include: [stale-runtime-state, deletion-state-race-across-components]
-        exclude: [single-component-state-machine-error]
-      - code: RC-5.4
-        name_en: Operation Forwarding and Privilege Amplification
-        name_zh: 操作转发与权限放大
-        definition: 低权限域请求经代理或Agent转发后以更高宿主权限执行。
-        include: [host-agent-forwarding-abuse, privileged-proxy-confused-deputy]
-        exclude: [direct-host-authorization-bypass]
-      - code: RC-5.5
-        name_en: API Protocol and Version Semantic Mismatch
-        name_zh: API、协议与版本语义失配
-        definition: CRI、OCI、CNI、CSI或版本兼容层对字段和协议含义解释不一致。
-        include: [field-translation-error, incompatible-security-default]
-        exclude: [malformed-input-parser-bug]
-      - code: RC-5.6
-        name_en: Check Execution Layer Separation
-        name_zh: 检查层与执行层分离
-        definition: 安全检查与实际执行发生在不同组件或信任域，检查结果无法约束执行对象。
-        include: [check-use-cross-layer-gap, validation-execution-disagreement]
-        exclude: [single-process-toctou]
+- code: RC-1
+  name_en: Implementation Correctness Failure
+  name_zh: 实现正确性失效
+  definition: 单个组件对内存、输入、状态、并发或资源生命周期的实现不满足安全不变量。
+  children:
+  - code: RC-1.1
+    name_en: Memory and Numeric Error
+    name_zh: 内存与数值计算错误
+    definition: 内存访问、释放、类型或数值计算错误形成利用原语。
+    include:
+    - out-of-bounds
+    - use-after-free
+    - integer-overflow
+    - type-confusion
+    exclude:
+    - shared-cache-side-channel
+    - resource-quota-misconfiguration
+    positive_examples:
+    - 越界写导致相邻安全对象被篡改
+    - 释放后对象可被攻击者控制并再次使用
+    negative_examples:
+    - 仅发生安全边界外的普通崩溃
+    - 纯缓存侧信道且无软件内存错误
+    machine_signals:
+      static:
+      - unsafe-memory-operation
+      - tainted-length-to-memory-access
+      - integer-wrap-to-allocation
+      dynamic:
+      - sanitizer-memory-error
+      - controlled-memory-corruption
+      - reproducible-crash-with-security-object-impact
+    evidence_gate:
+      minimum_independent_evidence: 2
+      required_any_of:
+      - - source
+        - dynamic
+      - - source
+        - patch
+      - - official_advisory
+        - patch
+      requires_security_property_violation: true
+      requires_counterfactual_test: true
+      allows_text_only_classification: false
+    causal_test: 修复该失效点后，核心攻击路径必须不可成立或安全影响必须显著降低。
+  - code: RC-1.2
+    name_en: Input Parsing and Canonicalization Error
+    name_zh: 输入解析与规范化错误
+    definition: 输入、路径、镜像、协议或配置解析与规范化不正确。
+    include:
+    - path-traversal
+    - command-injection
+    - unsafe-deserialization
+    - ambiguous-parsing
+    exclude:
+    - untrusted-image-admission
+    - rbac-overpermission
+    positive_examples:
+    - 未规范化路径穿越容器根目录
+    - 同一输入在校验与执行阶段被解析为不同对象
+    negative_examples:
+    - 管理员显式配置hostPath
+    - 不同组件路径根语义不一致，应归RC-5.2
+    machine_signals:
+      static:
+      - tainted-input-to-parser
+      - canonicalization-after-validation
+      - unsafe-deserialization-path
+      dynamic:
+      - crafted-input-bypasses-validation
+      - path-resolution-crosses-boundary
+    evidence_gate:
+      minimum_independent_evidence: 2
+      required_any_of:
+      - - source
+        - dynamic
+      - - source
+        - patch
+      - - official_advisory
+        - patch
+      requires_security_property_violation: true
+      requires_counterfactual_test: true
+      allows_text_only_classification: false
+    causal_test: 修复该失效点后，核心攻击路径必须不可成立或安全影响必须显著降低。
+  - code: RC-1.3
+    name_en: Concurrency and Ordering Error
+    name_zh: 并发、时序与原子性错误
+    definition: 检查、使用、初始化或状态更新之间的顺序与同步错误。
+    include:
+    - race-condition
+    - toctou
+    - non-atomic-update
+    exclude:
+    - cross-component-state-semantic-mismatch
+    positive_examples:
+    - 检查后使用前目标被替换形成TOCTOU
+    - 并发状态更新造成权限检查与执行不一致
+    negative_examples:
+    - 跨组件生命周期状态不同步，应归RC-5.3
+    - 无安全影响的普通数据竞争
+    machine_signals:
+      static:
+      - check-use-gap
+      - non-atomic-security-state-update
+      - missing-lock-on-security-object
+      dynamic:
+      - race-reproduced
+      - ordering-dependent-boundary-bypass
+    evidence_gate:
+      minimum_independent_evidence: 2
+      required_any_of:
+      - - source
+        - dynamic
+      - - source
+        - patch
+      - - official_advisory
+        - patch
+      requires_security_property_violation: true
+      requires_counterfactual_test: true
+      allows_text_only_classification: false
+    causal_test: 修复该失效点后，核心攻击路径必须不可成立或安全影响必须显著降低。
+  - code: RC-1.4
+    name_en: State Management Error
+    name_zh: 状态管理错误
+    definition: 组件内部状态机、缓存、初始化或恢复过程不正确。
+    include:
+    - invalid-state-transition
+    - stale-cache
+    - incomplete-initialization
+    exclude:
+    - host-guest-state-disagreement
+    positive_examples:
+    - 非法状态转换绕过安全初始化
+    - 陈旧缓存继续授权已撤销主体
+    negative_examples:
+    - 多个组件状态不同步，应归RC-5.3
+    - 仅影响可用性的状态机错误且无安全属性违反
+    machine_signals:
+      static:
+      - invalid-security-state-transition
+      - stale-security-cache
+      - incomplete-security-initialization
+      dynamic:
+      - state-sequence-bypasses-guard
+      - recovery-restores-insecure-state
+    evidence_gate:
+      minimum_independent_evidence: 2
+      required_any_of:
+      - - source
+        - dynamic
+      - - source
+        - patch
+      - - official_advisory
+        - patch
+      requires_security_property_violation: true
+      requires_counterfactual_test: true
+      allows_text_only_classification: false
+    causal_test: 修复该失效点后，核心攻击路径必须不可成立或安全影响必须显著降低。
+  - code: RC-1.5
+    name_en: Resource and Object Lifecycle Error
+    name_zh: 资源与对象生命周期错误
+    definition: 文件描述符、挂载点、进程、句柄或临时资源创建、继承和销毁错误。
+    include:
+    - file-descriptor-leak
+    - stale-handle
+    - incomplete-cleanup
+    exclude:
+    - quota-policy-missing
+    positive_examples:
+    - 宿主文件描述符跨exec泄漏进容器
+    - 临时挂载清理失败后可被后续租户访问
+    negative_examples:
+    - 资源配额策略缺失，应归RC-3.6
+    - 显式授权继承的标准输入输出
+    machine_signals:
+      static:
+      - missing-close-on-exec
+      - resource-owner-mismatch
+      - incomplete-cleanup-path
+      dynamic:
+      - unexpected-fd-inheritance
+      - stale-handle-access
+      - orphaned-mount-visible
+    evidence_gate:
+      minimum_independent_evidence: 2
+      required_any_of:
+      - - source
+        - dynamic
+      - - source
+        - patch
+      - - official_advisory
+        - patch
+      requires_security_property_violation: true
+      requires_counterfactual_test: true
+      allows_text_only_classification: false
+    causal_test: 修复该失效点后，核心攻击路径必须不可成立或安全影响必须显著降低。
+  - code: RC-1.6
+    name_en: Exception Handling and Recovery Error
+    name_zh: 异常处理与错误恢复错误
+    definition: 异常路径、回滚或失败恢复不完整并留下不安全状态。
+    include:
+    - incomplete-rollback
+    - ignored-error
+    - unsafe-recovery
+    exclude:
+    - intentional-fail-open-policy
+    positive_examples:
+    - 错误分支跳过权限撤销并继续执行
+    - 回滚不完整留下可复用高权限对象
+    negative_examples:
+    - 明确设计的策略fail-open，应归RC-3.4
+    - 错误处理仅导致安全失败关闭
+    machine_signals:
+      static:
+      - ignored-security-error
+      - partial-rollback
+      - unsafe-recovery-branch
+      dynamic:
+      - fault-injection-leaves-privilege
+      - recovery-bypasses-policy
+    evidence_gate:
+      minimum_independent_evidence: 2
+      required_any_of:
+      - - source
+        - dynamic
+      - - source
+        - patch
+      - - official_advisory
+        - patch
+      requires_security_property_violation: true
+      requires_counterfactual_test: true
+      allows_text_only_classification: false
+    causal_test: 修复该失效点后，核心攻击路径必须不可成立或安全影响必须显著降低。
+- code: RC-2
+  name_en: Isolation and Resource Boundary Failure
+  name_zh: 隔离与资源边界失效
+  definition: 本应相互隔离的执行域、资源域、租户域或硬件状态发生非预期共享或越界。
+  children:
+  - code: RC-2.1
+    name_en: Namespace and Process Boundary Failure
+    name_zh: Namespace与进程边界失效
+    definition: 进程、用户、网络、IPC或其他命名空间隔离不完整或被绕过。
+    include:
+    - namespace-leak
+    - uid-map-bypass
+    - process-visibility
+    exclude:
+    - rbac-overpermission
+    positive_examples:
+    - 容器可观察宿主或其他租户进程
+    - 用户命名空间映射允许越权身份
+    negative_examples:
+    - RBAC授权过宽，应归RC-3.2
+    - 仅容器内正常进程可见性
+    machine_signals:
+      static:
+      - namespace-join-without-boundary-check
+      - uid-map-boundary-gap
+      dynamic:
+      - cross-namespace-process-visible
+      - unauthorized-setns-success
+    evidence_gate:
+      minimum_independent_evidence: 2
+      required_any_of:
+      - - source
+        - dynamic
+      - - source
+        - patch
+      - - official_advisory
+        - patch
+      requires_security_property_violation: true
+      requires_counterfactual_test: true
+      allows_text_only_classification: false
+    causal_test: 修复该失效点后，核心攻击路径必须不可成立或安全影响必须显著降低。
+  - code: RC-2.2
+    name_en: Filesystem Mount and Device Boundary Failure
+    name_zh: 文件系统、挂载与设备边界失效
+    definition: 宿主文件、挂载点、设备或套接字被错误暴露给隔离域。
+    include:
+    - host-filesystem-exposure
+    - device-exposure
+    - mount-boundary-bypass
+    exclude:
+    - operator-configured-hostpath
+    positive_examples:
+    - 容器访问未授权宿主文件或设备
+    - 挂载传播把宿主挂载暴露到容器
+    negative_examples:
+    - 管理员显式配置hostPath，应归RC-3.6
+    - 容器自身文件系统内的正常访问
+    machine_signals:
+      static:
+      - host-path-exposed-by-implementation
+      - unsafe-mount-propagation
+      - device-boundary-missing
+      dynamic:
+      - host-marker-readable
+      - unauthorized-device-open
+      - mount-crosses-root
+    evidence_gate:
+      minimum_independent_evidence: 2
+      required_any_of:
+      - - source
+        - dynamic
+      - - source
+        - patch
+      - - official_advisory
+        - patch
+      requires_security_property_violation: true
+      requires_counterfactual_test: true
+      allows_text_only_classification: false
+    causal_test: 修复该失效点后，核心攻击路径必须不可成立或安全影响必须显著降低。
+  - code: RC-2.3
+    name_en: Syscall and Kernel Attack-Surface Boundary Failure
+    name_zh: 系统调用与内核攻击面边界失效
+    definition: 工作负载获得了超出预期的宿主内核接口或系统调用攻击面。
+    include:
+    - syscall-filter-bypass
+    - kernel-interface-exposure
+    exclude:
+    - seccomp-policy-not-configured
+    positive_examples:
+    - seccomp声明阻断但敏感系统调用仍成功
+    - 容器获得预期外内核控制接口
+    negative_examples:
+    - 部署者未配置seccomp，应归RC-3.6或RC-3.4
+    - 允许列表内的正常系统调用
+    machine_signals:
+      static:
+      - filter-enforcement-gap
+      - kernel-interface-unconditionally-exposed
+      dynamic:
+      - blocked-syscall-succeeds
+      - sensitive-kernel-interface-reachable
+    evidence_gate:
+      minimum_independent_evidence: 2
+      required_any_of:
+      - - source
+        - dynamic
+      - - source
+        - patch
+      - - official_advisory
+        - patch
+      requires_security_property_violation: true
+      requires_counterfactual_test: true
+      allows_text_only_classification: false
+    causal_test: 修复该失效点后，核心攻击路径必须不可成立或安全影响必须显著降低。
+  - code: RC-2.4
+    name_en: Resource Accounting and Quota Boundary Failure
+    name_zh: 资源计量与配额边界失效
+    definition: CPU、内存、PID、磁盘或网络资源未被正确隔离、计量或约束。
+    include:
+    - cgroup-bypass
+    - cross-tenant-resource-exhaustion
+    exclude:
+    - operator-omitted-resource-limit
+    positive_examples:
+    - 容器绕过cgroup限制耗尽其他租户资源
+    - 资源计量归属错误造成跨租户干扰
+    negative_examples:
+    - 管理员未设置limit，应归RC-3.6
+    - 单容器内正常高负载
+    machine_signals:
+      static:
+      - accounting-domain-mismatch
+      - quota-enforcement-bypass
+      dynamic:
+      - limit-exceeded-without-throttle
+      - cross-tenant-resource-impact
+    evidence_gate:
+      minimum_independent_evidence: 2
+      required_any_of:
+      - - source
+        - dynamic
+      - - source
+        - patch
+      - - official_advisory
+        - patch
+      requires_security_property_violation: true
+      requires_counterfactual_test: true
+      allows_text_only_classification: false
+    causal_test: 修复该失效点后，核心攻击路径必须不可成立或安全影响必须显著降低。
+  - code: RC-2.5
+    name_en: Guest Host and Virtual Device Boundary Failure
+    name_zh: Guest—Host与虚拟设备边界失效
+    definition: microVM、VMM、共享文件系统或虚拟设备没有维持Guest与Host隔离。
+    include:
+    - vmm-escape
+    - virtio-boundary-bypass
+    - shared-fs-escape
+    exclude:
+    - host-agent-semantic-privilege-amplification
+    positive_examples:
+    - Guest输入触发VMM越界并影响宿主
+    - 共享文件系统路径突破Guest边界
+    negative_examples:
+    - Guest Agent以高权限错误转发操作，应归RC-5.4
+    - 仅容器突破到Guest但未触及Host边界
+    machine_signals:
+      static:
+      - guest-controlled-input-to-vmm-unsafe-operation
+      - virtual-device-boundary-gap
+      dynamic:
+      - host-marker-access-from-guest
+      - vmm-memory-corruption
+      - unauthorized-host-operation
+    evidence_gate:
+      minimum_independent_evidence: 2
+      required_any_of:
+      - - source
+        - dynamic
+      - - source
+        - patch
+      - - official_advisory
+        - patch
+      requires_security_property_violation: true
+      requires_counterfactual_test: true
+      allows_text_only_classification: false
+    causal_test: 修复该失效点后，核心攻击路径必须不可成立或安全影响必须显著降低。
+  - code: RC-2.6
+    name_en: Hardware and Microarchitectural Sharing Failure
+    name_zh: 硬件与微架构共享状态失效
+    definition: 缓存、分支预测、SMT、DMA或其他硬件共享状态泄露或干扰安全域。
+    include:
+    - cache-side-channel
+    - speculative-execution
+    - dma-isolation-failure
+    exclude:
+    - software-out-of-bounds-access
+    positive_examples:
+    - 跨租户缓存状态泄露秘密
+    - DMA可访问未授权宿主内存
+    negative_examples:
+    - 软件越界读取，应归RC-1.1
+    - 无跨安全域影响的性能抖动
+    machine_signals:
+      static:
+      - shared-microarchitectural-state
+      - missing-iommu-isolation
+      dynamic:
+      - cross-domain-secret-inference
+      - unauthorized-dma-read
+    evidence_gate:
+      minimum_independent_evidence: 2
+      required_any_of:
+      - - source
+        - dynamic
+      - - source
+        - patch
+      - - official_advisory
+        - patch
+      requires_security_property_violation: true
+      requires_counterfactual_test: true
+      allows_text_only_classification: false
+    causal_test: 修复该失效点后，核心攻击路径必须不可成立或安全影响必须显著降低。
+- code: RC-3
+  name_en: Privilege and Security Policy Failure
+  name_zh: 权限与安全策略失效
+  definition: 身份、权限、策略或安全默认值的定义、配置或执行不符合最小权限原则。
+  children:
+  - code: RC-3.1
+    name_en: Authentication and Identity Mapping Error
+    name_zh: 身份认证与身份映射错误
+    definition: 身份认证、主体绑定或跨域身份映射不正确。
+    include:
+    - authentication-bypass
+    - uid-gid-mapping-error
+    exclude:
+    - authorization-policy-overpermission
+    positive_examples:
+    - 未认证主体被映射为已认证用户
+    - Host与Guest UID映射授予错误身份
+    negative_examples:
+    - 已认证主体授权范围过大，应归RC-3.2
+    - 命名空间实现绕过应归RC-2.1
+    machine_signals:
+      static:
+      - authentication-check-missing
+      - identity-binding-error
+      dynamic:
+      - unauthenticated-action-succeeds
+      - identity-maps-to-wrong-principal
+    evidence_gate:
+      minimum_independent_evidence: 2
+      required_any_of:
+      - - source
+        - dynamic
+      - - source
+        - patch
+      - - official_advisory
+        - patch
+      requires_security_property_violation: true
+      requires_counterfactual_test: true
+      allows_text_only_classification: false
+    causal_test: 修复该失效点后，核心攻击路径必须不可成立或安全影响必须显著降低。
+  - code: RC-3.2
+    name_en: Authorization and RBAC Error
+    name_zh: 授权与RBAC错误
+    definition: API、对象或集群权限检查缺失、错误或授权范围过大。
+    include:
+    - missing-authorization
+    - rbac-overpermission
+    - service-account-abuse
+    exclude:
+    - capability-overgrant
+    positive_examples:
+    - Kubernetes API缺失对象级授权检查
+    - 服务账户获得超出职责的集群权限
+    negative_examples:
+    - Linux capability授予错误，应归RC-3.3
+    - 身份认证绕过应归RC-3.1
+    machine_signals:
+      static:
+      - authorization-check-missing
+      - rbac-scope-too-broad
+      dynamic:
+      - unauthorized-api-action-succeeds
+      - cross-tenant-object-access
+    evidence_gate:
+      minimum_independent_evidence: 2
+      required_any_of:
+      - - source
+        - dynamic
+      - - source
+        - patch
+      - - official_advisory
+        - patch
+      requires_security_property_violation: true
+      requires_counterfactual_test: true
+      allows_text_only_classification: false
+    causal_test: 修复该失效点后，核心攻击路径必须不可成立或安全影响必须显著降低。
+  - code: RC-3.3
+    name_en: Capability and Privilege Management Error
+    name_zh: Capability与特权管理错误
+    definition: Linux Capability、特权容器或宿主权限被错误授予或继承。
+    include:
+    - privileged-container
+    - cap-sys-admin
+    - privilege-inheritance
+    exclude:
+    - namespace-implementation-bypass
+    positive_examples:
+    - 非特权容器继承CAP_SYS_ADMIN
+    - 运行时错误保留宿主级capability
+    negative_examples:
+    - namespace实现绕过应归RC-2.1
+    - 代理转发造成权限放大应归RC-5.4
+    machine_signals:
+      static:
+      - capability-not-dropped
+      - privilege-inheritance-gap
+      dynamic:
+      - unexpected-capability-present
+      - privileged-operation-succeeds
+    evidence_gate:
+      minimum_independent_evidence: 2
+      required_any_of:
+      - - source
+        - dynamic
+      - - source
+        - patch
+      - - official_advisory
+        - patch
+      requires_security_property_violation: true
+      requires_counterfactual_test: true
+      allows_text_only_classification: false
+    causal_test: 修复该失效点后，核心攻击路径必须不可成立或安全影响必须显著降低。
+  - code: RC-3.4
+    name_en: Security Policy Absence or Enforcement Failure
+    name_zh: 安全策略缺失或执行失效
+    definition: seccomp、LSM、NetworkPolicy、Admission等策略缺失、未加载或未执行。
+    include:
+    - seccomp-disabled
+    - admission-bypass
+    - policy-fail-open
+    exclude:
+    - policy-parser-memory-corruption
+    positive_examples:
+    - 策略配置存在但未加载或被绕过
+    - Admission拒绝规则在特定路径fail-open
+    negative_examples:
+    - 策略解析器内存错误应归RC-1.1
+    - 操作者根本未配置策略应归RC-3.6
+    machine_signals:
+      static:
+      - policy-not-enforced
+      - fail-open-control-path
+      dynamic:
+      - denied-action-succeeds
+      - policy-engine-not-invoked
+    evidence_gate:
+      minimum_independent_evidence: 2
+      required_any_of:
+      - - source
+        - dynamic
+      - - source
+        - patch
+      - - official_advisory
+        - patch
+      requires_security_property_violation: true
+      requires_counterfactual_test: true
+      allows_text_only_classification: false
+    causal_test: 修复该失效点后，核心攻击路径必须不可成立或安全影响必须显著降低。
+  - code: RC-3.5
+    name_en: Insecure Default
+    name_zh: 不安全默认值
+    definition: 产品默认配置在常规部署下授予过多权限或暴露危险接口。
+    include:
+    - anonymous-access-default
+    - unsafe-listen-default
+    exclude:
+    - operator-overrides-secure-default
+    positive_examples:
+    - 默认监听地址暴露管理接口
+    - 默认匿名访问允许敏感操作
+    negative_examples:
+    - 管理员覆盖安全默认后造成错误配置应归RC-3.6
+    - 仅文档建议不安全但默认实际安全
+    machine_signals:
+      static:
+      - unsafe-default-value
+      - default-public-listener
+      dynamic:
+      - fresh-install-exposes-sensitive-interface
+      - default-anonymous-action
+    evidence_gate:
+      minimum_independent_evidence: 2
+      required_any_of:
+      - - source
+        - dynamic
+      - - source
+        - patch
+      - - official_advisory
+        - patch
+      requires_security_property_violation: true
+      requires_counterfactual_test: true
+      allows_text_only_classification: false
+    causal_test: 修复该失效点后，核心攻击路径必须不可成立或安全影响必须显著降低。
+  - code: RC-3.6
+    name_en: Operator Misconfiguration
+    name_zh: 操作者错误配置
+    definition: 管理员或部署者设置了超出业务需要的权限、挂载、网络或策略。
+    include:
+    - docker-socket-mount
+    - hostpath-root
+    - hostpid
+    - missing-resource-limit
+    exclude:
+    - product-code-authorization-bug
+    positive_examples:
+    - 管理员挂载docker.sock到业务容器
+    - Pod使用hostPID且无业务必要
+    negative_examples:
+    - 产品代码缺少授权检查应归RC-3.2
+    - 默认配置自身不安全应归RC-3.5
+    machine_signals:
+      static:
+      - deployment-privilege-overgrant
+      - dangerous-host-mount
+      dynamic:
+      - configured-workload-crosses-boundary
+      - policy-audit-detects-overpermission
+    evidence_gate:
+      minimum_independent_evidence: 2
+      required_any_of:
+      - - source
+        - dynamic
+      - - source
+        - patch
+      - - official_advisory
+        - patch
+      requires_security_property_violation: true
+      requires_counterfactual_test: true
+      allows_text_only_classification: false
+    causal_test: 修复该失效点后，核心攻击路径必须不可成立或安全影响必须显著降低。
+- code: RC-4
+  name_en: Trust and Integrity Failure
+  name_zh: 信任与完整性失效
+  definition: 系统错误信任了镜像、制品、依赖、凭据、更新或证明材料。
+  children:
+  - code: RC-4.1
+    name_en: Image and Artifact Integrity Failure
+    name_zh: 镜像与制品完整性失效
+    definition: 镜像或制品来源、摘要、签名或内容完整性未被正确验证。
+    include:
+    - unsigned-image
+    - mutable-tag
+    - digest-not-pinned
+    exclude:
+    - image-parser-memory-corruption
+    positive_examples:
+    - 镜像签名未校验即可部署
+    - 可变tag导致实际制品与审批制品不一致
+    negative_examples:
+    - 镜像解析器内存错误应归RC-1.1
+    - Registry访问权限过宽应归RC-3.2
+    machine_signals:
+      static:
+      - signature-verification-missing
+      - digest-not-pinned
+      dynamic:
+      - tampered-artifact-accepted
+      - approved-digest-mismatch
+    evidence_gate:
+      minimum_independent_evidence: 2
+      required_any_of:
+      - - source
+        - dynamic
+      - - source
+        - patch
+      - - official_advisory
+        - patch
+      requires_security_property_violation: true
+      requires_counterfactual_test: true
+      allows_text_only_classification: false
+    causal_test: 修复该失效点后，核心攻击路径必须不可成立或安全影响必须显著降低。
+  - code: RC-4.2
+    name_en: Registry and Distribution Trust Failure
+    name_zh: Registry与分发链信任失效
+    definition: Registry、镜像传输、代理或分发过程的信任边界不正确。
+    include:
+    - untrusted-registry
+    - distribution-tampering
+    - tls-validation-error
+    exclude:
+    - rbac-registry-permission
+    positive_examples:
+    - Registry TLS验证错误接受中间人证书
+    - 分发代理可替换镜像层且未检测
+    negative_examples:
+    - Registry RBAC错误应归RC-3.2
+    - 镜像本地签名验证缺失应归RC-4.1
+    machine_signals:
+      static:
+      - distribution-trust-anchor-missing
+      - tls-verification-disabled
+      dynamic:
+      - tampered-transfer-accepted
+      - untrusted-registry-content-pulled
+    evidence_gate:
+      minimum_independent_evidence: 2
+      required_any_of:
+      - - source
+        - dynamic
+      - - source
+        - patch
+      - - official_advisory
+        - patch
+      requires_security_property_violation: true
+      requires_counterfactual_test: true
+      allows_text_only_classification: false
+    causal_test: 修复该失效点后，核心攻击路径必须不可成立或安全影响必须显著降低。
+  - code: RC-4.3
+    name_en: Dependency Build and Supply-Chain Failure
+    name_zh: 依赖、构建与供应链失效
+    definition: 依赖解析、构建环境、插件或发布流水线被污染或无法证明来源。
+    include:
+    - dependency-confusion
+    - compromised-builder
+    - malicious-plugin
+    exclude:
+    - runtime-container-escape
+    positive_examples:
+    - 依赖混淆加载攻击者包
+    - 构建器被污染并生成恶意镜像
+    negative_examples:
+    - 运行时容器逃逸应归RC-2
+    - 单纯依赖版本过旧但无供应链污染
+    machine_signals:
+      static:
+      - untrusted-build-input
+      - dependency-resolution-ambiguity
+      dynamic:
+      - malicious-dependency-selected
+      - build-output-provenance-break
+    evidence_gate:
+      minimum_independent_evidence: 2
+      required_any_of:
+      - - source
+        - dynamic
+      - - source
+        - patch
+      - - official_advisory
+        - patch
+      requires_security_property_violation: true
+      requires_counterfactual_test: true
+      allows_text_only_classification: false
+    causal_test: 修复该失效点后，核心攻击路径必须不可成立或安全影响必须显著降低。
+  - code: RC-4.4
+    name_en: Credential Key and Certificate Failure
+    name_zh: 凭据、密钥与证书信任失效
+    definition: Secret、密钥、令牌和证书的存储、分发、轮换或验证错误。
+    include:
+    - secret-exposure
+    - certificate-validation-error
+    - token-scope-error
+    exclude:
+    - service-account-rbac-overpermission
+    positive_examples:
+    - Secret以明文暴露给非授权容器
+    - 证书验证错误信任攻击者端点
+    negative_examples:
+    - 服务账户RBAC过宽应归RC-3.2
+    - 普通日志中无敏感内容
+    machine_signals:
+      static:
+      - credential-exposure-path
+      - certificate-validation-gap
+      dynamic:
+      - unauthorized-secret-read
+      - invalid-certificate-accepted
+    evidence_gate:
+      minimum_independent_evidence: 2
+      required_any_of:
+      - - source
+        - dynamic
+      - - source
+        - patch
+      - - official_advisory
+        - patch
+      requires_security_property_violation: true
+      requires_counterfactual_test: true
+      allows_text_only_classification: false
+    causal_test: 修复该失效点后，核心攻击路径必须不可成立或安全影响必须显著降低。
+  - code: RC-4.5
+    name_en: Update Provenance and Attestation Failure
+    name_zh: 更新、来源证明与Attestation失效
+    definition: 更新、SBOM、VEX、provenance或远程证明结果缺失、失真或未校验。
+    include:
+    - unverified-update
+    - provenance-missing
+    - attestation-bypass
+    exclude:
+    - update-parser-implementation-bug
+    positive_examples:
+    - 未验证更新来源即安装
+    - Attestation结果被绕过仍允许部署
+    negative_examples:
+    - 更新解析器实现错误应归RC-1.2
+    - 仅缺少可选SBOM但没有信任决策依赖
+    machine_signals:
+      static:
+      - provenance-check-missing
+      - attestation-bypass-path
+      dynamic:
+      - unverified-update-applied
+      - invalid-attestation-accepted
+    evidence_gate:
+      minimum_independent_evidence: 2
+      required_any_of:
+      - - source
+        - dynamic
+      - - source
+        - patch
+      - - official_advisory
+        - patch
+      requires_security_property_violation: true
+      requires_counterfactual_test: true
+      allows_text_only_classification: false
+    causal_test: 修复该失效点后，核心攻击路径必须不可成立或安全影响必须显著降低。
+- code: RC-5
+  name_en: Cross-Layer Interaction and Semantic Failure
+  name_zh: 跨层交互与语义失配
+  definition: 多个组件对身份、权限、路径、状态、生命周期或操作语义理解不一致，组合后产生安全缺陷。
+  children:
+  - code: RC-5.1
+    name_en: Identity and Privilege Semantic Mismatch
+    name_zh: 身份与权限语义失配
+    definition: Host、Guest、Kubernetes和Runtime对主体身份或权限含义理解不同。
+    include:
+    - cross-layer-uid-mismatch
+    - privilege-translation-error
+    exclude:
+    - single-component-authentication-bypass
+    positive_examples:
+    - Kubernetes身份在runtime层被映射为更高权限UID
+    - Host与Guest对同一身份的权限解释不同
+    negative_examples:
+    - 单组件认证绕过应归RC-3.1
+    - 单组件capability保留应归RC-3.3
+    machine_signals:
+      static:
+      - cross-layer-identity-translation
+      - privilege-semantic-disagreement
+      dynamic:
+      - same-principal-has-elevated-cross-layer-rights
+      - identity-translation-enables-action
+    evidence_gate:
+      minimum_independent_evidence: 2
+      required_any_of:
+      - - source
+        - dynamic
+      - - source
+        - patch
+      - - official_advisory
+        - patch
+      requires_security_property_violation: true
+      requires_counterfactual_test: true
+      allows_text_only_classification: false
+    causal_test: 修复该失效点后，核心攻击路径必须不可成立或安全影响必须显著降低。
+  - code: RC-5.2
+    name_en: Path Mount and File Semantic Mismatch
+    name_zh: 路径、挂载与文件语义失配
+    definition: 不同层对路径根、符号链接、挂载或文件属性解释不一致。
+    include:
+    - host-guest-path-mismatch
+    - cri-oci-mount-translation-error
+    exclude:
+    - single-parser-path-traversal
+    positive_examples:
+    - CRI校验容器路径但OCI执行为宿主路径
+    - Host与Guest对符号链接根目录解释不同
+    negative_examples:
+    - 单解析器路径穿越应归RC-1.2
+    - 实现直接暴露宿主挂载应归RC-2.2
+    machine_signals:
+      static:
+      - cross-layer-path-translation
+      - mount-semantic-disagreement
+      dynamic:
+      - validated-path-resolves-differently-at-execution
+      - cross-layer-mount-target-mismatch
+    evidence_gate:
+      minimum_independent_evidence: 2
+      required_any_of:
+      - - source
+        - dynamic
+      - - source
+        - patch
+      - - official_advisory
+        - patch
+      requires_security_property_violation: true
+      requires_counterfactual_test: true
+      allows_text_only_classification: false
+    causal_test: 修复该失效点后，核心攻击路径必须不可成立或安全影响必须显著降低。
+  - code: RC-5.3
+    name_en: Lifecycle and State Synchronization Mismatch
+    name_zh: 生命周期与状态同步失配
+    definition: kubelet、shim、runtime、agent或VMM对对象状态与生命周期认识不一致。
+    include:
+    - stale-runtime-state
+    - deletion-state-race-across-components
+    exclude:
+    - single-component-state-machine-error
+    positive_examples:
+    - kubelet认为Pod已删除但shim仍持有特权资源
+    - runtime与VMM生命周期状态不同步可复用旧句柄
+    negative_examples:
+    - 单组件状态机错误应归RC-1.4
+    - 单进程竞态应归RC-1.3
+    machine_signals:
+      static:
+      - cross-component-state-desynchronization
+      - lifecycle-ownership-gap
+      dynamic:
+      - stale-cross-layer-state-enables-access
+      - delete-create-race-crosses-components
+    evidence_gate:
+      minimum_independent_evidence: 2
+      required_any_of:
+      - - source
+        - dynamic
+      - - source
+        - patch
+      - - official_advisory
+        - patch
+      requires_security_property_violation: true
+      requires_counterfactual_test: true
+      allows_text_only_classification: false
+    causal_test: 修复该失效点后，核心攻击路径必须不可成立或安全影响必须显著降低。
+  - code: RC-5.4
+    name_en: Operation Forwarding and Privilege Amplification
+    name_zh: 操作转发与权限放大
+    definition: 低权限域请求经代理或Agent转发后以更高宿主权限执行。
+    include:
+    - host-agent-forwarding-abuse
+    - privileged-proxy-confused-deputy
+    exclude:
+    - direct-host-authorization-bypass
+    positive_examples:
+    - 低权限Guest请求经Host Agent以root执行
+    - 容器请求通过特权代理形成confused deputy
+    negative_examples:
+    - 宿主API直接缺授权应归RC-3.2
+    - 虚拟设备内存越界应归RC-2.5
+    machine_signals:
+      static:
+      - privileged-forwarder-without-scope-check
+      - confused-deputy-flow
+      dynamic:
+      - low-privilege-request-causes-host-action
+      - forwarded-operation-exceeds-caller-rights
+    evidence_gate:
+      minimum_independent_evidence: 2
+      required_any_of:
+      - - source
+        - dynamic
+      - - source
+        - patch
+      - - official_advisory
+        - patch
+      requires_security_property_violation: true
+      requires_counterfactual_test: true
+      allows_text_only_classification: false
+    causal_test: 修复该失效点后，核心攻击路径必须不可成立或安全影响必须显著降低。
+  - code: RC-5.5
+    name_en: API Protocol and Version Semantic Mismatch
+    name_zh: API、协议与版本语义失配
+    definition: CRI、OCI、CNI、CSI或版本兼容层对字段和协议含义解释不一致。
+    include:
+    - field-translation-error
+    - incompatible-security-default
+    exclude:
+    - malformed-input-parser-bug
+    positive_examples:
+    - CRI与OCI对空字段安全默认理解不同
+    - 版本兼容层丢失安全相关字段
+    negative_examples:
+    - 单组件畸形输入解析错误应归RC-1.2
+    - 部署配置显式关闭安全功能应归RC-3.6
+    machine_signals:
+      static:
+      - security-field-translation-loss
+      - protocol-version-semantic-gap
+      dynamic:
+      - same-request-has-different-security-effect
+      - version-switch-changes-protection
+    evidence_gate:
+      minimum_independent_evidence: 2
+      required_any_of:
+      - - source
+        - dynamic
+      - - source
+        - patch
+      - - official_advisory
+        - patch
+      requires_security_property_violation: true
+      requires_counterfactual_test: true
+      allows_text_only_classification: false
+    causal_test: 修复该失效点后，核心攻击路径必须不可成立或安全影响必须显著降低。
+  - code: RC-5.6
+    name_en: Check Execution Layer Separation
+    name_zh: 检查层与执行层分离
+    definition: 安全检查与实际执行发生在不同组件或信任域，检查结果无法约束执行对象。
+    include:
+    - check-use-cross-layer-gap
+    - validation-execution-disagreement
+    exclude:
+    - single-process-toctou
+    positive_examples:
+    - Admission检查对象与runtime实际执行对象不一致
+    - 镜像校验后tag指向内容在执行层发生变化
+    negative_examples:
+    - 单进程TOCTOU应归RC-1.3
+    - 单组件授权检查缺失应归RC-3.2
+    machine_signals:
+      static:
+      - validation-execution-object-gap
+      - cross-trust-domain-check-use
+      dynamic:
+      - checked-object-differs-from-executed-object
+      - post-check-substitution-succeeds
+    evidence_gate:
+      minimum_independent_evidence: 2
+      required_any_of:
+      - - source
+        - dynamic
+      - - source
+        - patch
+      - - official_advisory
+        - patch
+      requires_security_property_violation: true
+      requires_counterfactual_test: true
+      allows_text_only_classification: false
+    causal_test: 修复该失效点后，核心攻击路径必须不可成立或安全影响必须显著降低。
+immutable_macro_categories: true
+unknown_label:
+  code: UNKNOWN
+  name_en: Unknown Root Cause
+  name_zh: 未知根因
+  use_when: 现有证据不足以满足任一二级标签的证据门槛，禁止强制归类。
+  classification_status: NEEDS_REVIEW

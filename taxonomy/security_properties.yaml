@@ -1,0 +1,94 @@
+taxonomy_id: cver-security-properties
+version: 1.0.0
+properties:
+  - code: SP1
+    name_en: Confidentiality Violation
+    name_zh: 机密性破坏
+    definition: 未授权主体获得跨安全域的敏感数据或秘密。
+    positive_examples: [读取宿主受控标记, 跨租户读取Secret]
+    negative_examples: [读取容器自身公开文件, 仅推测可能泄露但无数据证据]
+    evidence_gate: {minimum_independent_evidence: 2, required_types: [dynamic, boundary]}
+  - code: SP2
+    name_en: Integrity Violation
+    name_zh: 完整性破坏
+    definition: 未授权主体修改跨安全域的代码、配置、数据或执行状态。
+    positive_examples: [修改宿主受控标记, 篡改其他租户对象]
+    negative_examples: [修改容器自身临时文件, 仅发生崩溃无篡改]
+    evidence_gate: {minimum_independent_evidence: 2, required_types: [dynamic, boundary]}
+  - code: SP3
+    name_en: Availability Violation
+    name_zh: 可用性破坏
+    definition: 攻击者可使跨租户、控制面或宿主关键服务失去可用性。
+    positive_examples: [突破资源限制耗尽宿主, 非授权终止控制面]
+    negative_examples: [单个测试进程自崩溃, 受资源限制的正常终止]
+    evidence_gate: {minimum_independent_evidence: 2, required_types: [dynamic, impact]}
+  - code: SP4
+    name_en: Authentication Bypass
+    name_zh: 身份认证绕过
+    definition: 未完成有效认证的主体被系统视为已认证主体。
+    positive_examples: [匿名请求获得认证会话, 伪造身份被接受]
+    negative_examples: [已认证用户权限过宽, 仅用户名枚举]
+    evidence_gate: {minimum_independent_evidence: 2, required_types: [request, authorization_result]}
+  - code: SP5
+    name_en: Privilege or Access-Control Bypass
+    name_zh: 权限或访问控制绕过
+    definition: 主体执行超出其授权范围的操作或获得额外权限。
+    positive_examples: [低权限账户执行集群管理操作, 容器获得未授权capability]
+    negative_examples: [管理员显式授权的操作, 仅发现权限配置但未证明可达]
+    evidence_gate: {minimum_independent_evidence: 2, required_types: [identity, dynamic]}
+  - code: SP6
+    name_en: Container Host Isolation Failure
+    name_zh: 容器与宿主隔离失效
+    definition: 容器主体跨越容器边界访问或影响宿主安全域。
+    positive_examples: [读取宿主受控标记, 进入宿主namespace]
+    negative_examples: [仅获得容器内root, 仅突破到microVM Guest]
+    evidence_gate: {minimum_independent_evidence: 2, required_types: [boundary, dynamic]}
+  - code: SP7
+    name_en: Inter-Container or Tenant Isolation Failure
+    name_zh: 容器间或租户间隔离失效
+    definition: 一个工作负载访问或影响其他容器、Pod或租户资源。
+    positive_examples: [读取其他Pod受控数据, 操作其他租户进程]
+    negative_examples: [同一Pod内显式共享卷, 访问自身sidecar授权接口]
+    evidence_gate: {minimum_independent_evidence: 2, required_types: [boundary, dynamic]}
+  - code: SP8
+    name_en: Namespace Cgroup or Capability Boundary Failure
+    name_zh: Namespace、cgroup或Capability边界失效
+    definition: Linux隔离与资源控制原语未维持预期边界。
+    positive_examples: [未授权setns成功, cgroup限制被绕过]
+    negative_examples: [配置允许的namespace共享, 资源使用未超过限制]
+    evidence_gate: {minimum_independent_evidence: 2, required_types: [kernel_fact, dynamic]}
+  - code: SP9
+    name_en: Syscall or Kernel-Interface Policy Bypass
+    name_zh: 系统调用或内核接口策略绕过
+    definition: 被安全策略禁止的系统调用或内核控制接口仍可使用。
+    positive_examples: [seccomp禁止调用仍成功, 非授权BPF加载成功]
+    negative_examples: [策略未配置, 允许列表内调用]
+    evidence_gate: {minimum_independent_evidence: 2, required_types: [policy, dynamic]}
+  - code: SP10
+    name_en: Image and Supply-Chain Integrity Violation
+    name_zh: 镜像与供应链完整性破坏
+    definition: 未经验证或被篡改的镜像、依赖、构建产物或更新进入可信执行链。
+    positive_examples: [篡改镜像被准入, 依赖混淆包被构建]
+    negative_examples: [仅发现旧依赖版本, 有效签名的授权制品]
+    evidence_gate: {minimum_independent_evidence: 2, required_types: [provenance, acceptance_result]}
+  - code: SP11
+    name_en: Orchestration Control-Plane or Tenant Boundary Failure
+    name_zh: 编排控制面或租户边界失效
+    definition: 工作负载或低权限主体越权访问编排控制面或其他租户对象。
+    positive_examples: [Pod凭据修改集群级资源, 跨namespace访问受限对象]
+    negative_examples: [集群管理员授权操作, 同租户显式共享]
+    evidence_gate: {minimum_independent_evidence: 2, required_types: [identity, control_plane_result]}
+  - code: SP12
+    name_en: MicroVM or Virtualization Boundary Failure
+    name_zh: microVM或虚拟化边界失效
+    definition: Guest跨越VMM、虚拟设备或共享内存边界影响宿主。
+    positive_examples: [Guest触发宿主受控动作, VMM内存破坏可控]
+    negative_examples: [容器仅逃逸到Guest, Guest内正常虚拟设备访问]
+    evidence_gate: {minimum_independent_evidence: 2, required_types: [guest, host]}
+  - code: SP13
+    name_en: Audit Detection or Security-Control Bypass
+    name_zh: 审计、检测或安全控制绕过
+    definition: 攻击行为绕过应生效的审计、检测、阻断或响应控制。
+    positive_examples: [攻击成功且审计链无事件, 阻断策略被规避]
+    negative_examples: [检测延迟但最终完整记录, 控制未声明覆盖该行为]
+    evidence_gate: {minimum_independent_evidence: 2, required_types: [control_expectation, observed_result]}

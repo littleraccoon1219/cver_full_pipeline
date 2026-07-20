@@ -24,9 +24,7 @@ def test_binary_replay_never_executes_target(tmp_path):
     marker = tmp_path / "executed"
     binary = tmp_path / "runc"
     binary.write_text(
-        "#!/bin/sh\n"
-        f"touch {marker}\n"
-        "# runc version 1.1.11\n",
+        f"#!/bin/sh\ntouch {marker}\n# runc version 1.1.11\n",
         encoding="utf-8",
     )
     binary.chmod(0o755)

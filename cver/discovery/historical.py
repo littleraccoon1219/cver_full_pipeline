@@ -26,13 +26,14 @@ def _extract_runc_version(text: str) -> str | None:
     return match.group(1) if match else None
 
 
-
-
 def _embedded_runc_version(path: Path) -> str | None:
     """Extract common runc version strings without executing the target binary."""
     patterns = [
         re.compile(rb"runc version\s+v?([0-9]+(?:\.[0-9]+){1,2}(?:[-.]?rc\.?[0-9]+)?)", re.IGNORECASE),
-        re.compile(rb"github\.com/opencontainers/runc(?:/v2)?\s+v?([0-9]+(?:\.[0-9]+){1,2}(?:[-.]?rc\.?[0-9]+)?)", re.IGNORECASE),
+        re.compile(
+            rb"github\.com/opencontainers/runc(?:/v2)?\s+v?([0-9]+(?:\.[0-9]+){1,2}(?:[-.]?rc\.?[0-9]+)?)",
+            re.IGNORECASE,
+        ),
     ]
     with path.open("rb") as stream:
         if path.stat().st_size == 0:

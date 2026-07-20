@@ -28,3 +28,5 @@ logs/
 # Secrets
 .env
 *.key
+data/candidates/
+data/zero_day_vault/

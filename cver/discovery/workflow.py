@@ -1,18 +1,21 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
 
+from .budget import resolve_budget
 from .config import DiscoverySettings
-from .errors import EmergencyStopActive
 from .db import DiscoveryRepository
+from .errors import EmergencyStopActive
 from .knowledge import TrustedKnowledgeReader
 from .llm import LLMGateway
 from .llm.redaction import DataClass
 from .models import ExperimentKind, Job, PromotionStage, ToolResult
 from .policy import DiscoveryPolicy, PolicyContext
 from .sandbox import SandboxManager
+from .taxonomy import TaxonomyCatalog
 from .tools import CommandRunner, ToolRegistry
 
 _STATIC_KINDS = {ExperimentKind.VERSION_CHECK, ExperimentKind.SEMGREP_SCAN, ExperimentKind.PATCH_DIFF}
@@ -40,10 +43,37 @@ class DiscoveryWorkflow:
         self.sandboxes = SandboxManager(settings, self.runner, project_root=self.project_root)
         self.policy = DiscoveryPolicy(settings)
         self.knowledge = TrustedKnowledgeReader(settings.trusted_kb_db)
+        self.taxonomy = TaxonomyCatalog(settings.taxonomy_path, settings.security_properties_path)
 
     def _assert_not_stopped(self) -> None:
         if self.settings.emergency_stop_active():
             raise EmergencyStopActive(f"emergency stop is active: {self.settings.emergency_stop_file}")
+
+    @staticmethod
+    def _build_kb_query(job: Job, inventory: dict[str, Any]) -> str:
+        terms: list[str] = []
+        component_id = str(job.payload.get("component_id", "")).strip()
+        if component_id:
+            terms.append(component_id)
+        go_module = inventory.get("go_module")
+        if go_module:
+            terms.append(str(go_module))
+        terms.extend(Path(job.target).name.replace("_", "-").split("-"))
+        files = inventory.get("files", [])
+        for marker in [
+            "namespace",
+            "mount",
+            "seccomp",
+            "capability",
+            "ebpf",
+            "virtio",
+            "hypercall",
+            "registry",
+            "admission",
+        ]:
+            if any(marker in str(path).lower() for path in files[:2500]):
+                terms.append(marker)
+        return " ".join(dict.fromkeys(term for term in terms if len(term) >= 2))[:1000]
 
     def process(self, job: Job) -> dict[str, Any]:
         self._assert_not_stopped()
@@ -53,16 +83,25 @@ class DiscoveryWorkflow:
             raise ValueError("restricted data cannot be sent to the cloud LLM")
         inventory = self.tools.inventory(job.target)
         synthetic_benchmark = job.payload.get("benchmark_mode") == "synthetic_pathguard"
-        kb_context = self.knowledge.search("runc container runtime file descriptor namespace mount")
+        kb_query = self._build_kb_query(job, inventory)
+        kb_context = self.knowledge.search(kb_query)
+        budget = resolve_budget(
+            str(job.payload.get("budget_profile", self.settings.default_budget_profile)),
+            job.payload.get("budget_overrides"),
+        )
         planner_input = {
             "job": {
                 "job_id": job.job_id,
                 "kind": job.kind,
                 "target_kind": job.target_kind,
                 "risk": job.risk.value,
+                "component_id": job.payload.get("component_id"),
+                "budget": budget.to_dict(),
             },
             "inventory": inventory,
+            "trusted_knowledge_query": kb_query,
             "trusted_knowledge": kb_context,
+            "fixed_taxonomy": self.taxonomy.prompt_context(),
             "constraints": {
                 "no_arbitrary_shell": True,
                 "no_exploit_payload": True,
@@ -97,7 +136,9 @@ class DiscoveryWorkflow:
                 try:
                     kind = ExperimentKind(raw_kind)
                 except ValueError:
-                    experiments.append({"kind": raw_kind, "status": "skipped_with_reason", "reason": "unknown experiment kind"})
+                    experiments.append(
+                        {"kind": raw_kind, "status": "skipped_with_reason", "reason": "unknown experiment kind"}
+                    )
                     continue
                 if kind == ExperimentKind.SYNTHETIC_FIXTURE and not synthetic_benchmark:
                     result = {
@@ -106,17 +147,44 @@ class DiscoveryWorkflow:
                     }
                     experiments.append({"kind": kind.value, **result})
                     continue
-                approved = self.repository.has_approval(job.job_id, f"experiment:{kind.value}")
-                decision = self.policy.decide(
-                    PolicyContext(
-                        job_id=job.job_id,
-                        target=job.target,
-                        target_kind=job.target_kind,
-                        experiment_kind=kind,
-                        requested_backend=job.requested_backend,
-                        human_approved=approved,
-                    )
+                inventory_digest = hashlib.sha256(
+                    json.dumps(inventory, ensure_ascii=False, sort_keys=True, default=str).encode("utf-8")
+                ).hexdigest()
+                target_risk_raw = str(job.payload.get("target_risk", "low"))
+                try:
+                    target_risk = job.risk.__class__(target_risk_raw)
+                except ValueError:
+                    target_risk = job.risk
+                policy_context = PolicyContext(
+                    job_id=job.job_id,
+                    target=job.target,
+                    target_kind=job.target_kind,
+                    experiment_kind=kind,
+                    requested_backend=job.requested_backend,
+                    human_approved=False,
+                    job_risk=job.risk,
+                    target_risk=target_risk,
+                    architecture=str(job.payload.get("architecture", "unknown")),
+                    data_class=classification.value,
+                    network_mode=(
+                        "authorized-egress-only"
+                        if kind == ExperimentKind.HISTORICAL_POC
+                        else str(job.payload.get("network_mode", "online-audited"))
+                    ),
+                    experiment_spec={
+                        "target_inventory_sha256": inventory_digest,
+                        "component_id": job.payload.get("component_id"),
+                        "budget_profile": budget.profile,
+                        "kind": kind.value,
+                    },
                 )
+                approval_digest = self.policy.experiment_digest(policy_context)
+                policy_context.human_approved = self.repository.has_approval(
+                    job.job_id,
+                    f"experiment:{kind.value}",
+                    experiment_digest=approval_digest,
+                )
+                decision = self.policy.decide(policy_context)
                 experiment_id = self.repository.add_experiment(
                     job.job_id,
                     hypothesis_id,
@@ -177,14 +245,13 @@ class DiscoveryWorkflow:
                     "candidate_defect": "hypothesis plus at least one concrete observation",
                     "reproducible_bug": "deterministic reproduction in a controlled test",
                     "security_vulnerability": "reproduced bug plus violated security invariant and boundary impact",
-                    "exploitable_zero_day": "not available to the model; requires novelty assessment, disposable lab and human review",
+                    "exploitable_zero_day": "Suspected zero-day status cannot be declared by the model; "
+                    "it requires novelty assessment, disposable lab and human review",
                 },
             }
             self._assert_not_stopped()
             critique = self.gateway.critique(job.job_id, critic_input, classification=classification)
-            adjudicated_stage = self._adjudicate_stage(
-                experiments, critique, allow_synthetic=synthetic_benchmark
-            )
+            adjudicated_stage = self._adjudicate_stage(experiments, critique, allow_synthetic=synthetic_benchmark)
             if adjudicated_stage != PromotionStage.CANDIDATE_DEFECT:
                 self.repository.update_hypothesis_stage(hypothesis_id, adjudicated_stage.value)
             hypothesis_reports.append(
@@ -205,6 +272,10 @@ class DiscoveryWorkflow:
             "plan_coverage_gaps": plan.get("coverage_gaps", []),
             "hypotheses": hypothesis_reports,
             "benchmark_mode": job.payload.get("benchmark_mode"),
+            "component_id": job.payload.get("component_id"),
+            "budget": budget.to_dict(),
+            "taxonomy_version": self.taxonomy.version,
+            "trusted_knowledge_query": kb_query,
             "hard_limit": "No finding can be promoted to exploitable_zero_day in this environment.",
         }
         self._assert_not_stopped()

@@ -9,7 +9,7 @@ from .common import CandidateBundleBuilder, CollectorError, html_to_text, load_y
 
 COLLECTOR_VERSION = "1.0.0"
 _CONTROL_HEADING = re.compile(
-    r"(?im)^\s*(?P<id>\d+(?:\.\d+){1,5})\s+(?P<title>(?:Ensure|Verify|Set|Do not|Do Not|Use|Restrict|Configure|Disable|Enable)\b[^\n]{8,300})"
+    r"(?im)^\s*(?P<id>\d+(?:\.\d+){1,5})\s+(?P<title>(?:Ensure|Verify|Set|Do not|Do Not|Use|Restrict|Configure|Disable|Enable)\b[^\n]{8,300})"  # noqa: E501
 )
 _MARKDOWN_HEADING = re.compile(r"(?im)^#{1,6}\s+(?P<id>[A-Za-z0-9_.-]+)\s*[-:]?\s*(?P<title>[^\n]{8,300})")
 
@@ -119,8 +119,16 @@ def collect_misconfiguration_candidates(
                         "fragment_type": "document_section",
                     },
                     "assertions": [
-                        {"predicate": "configuration_control", "object": control["title"], "verification_status": "moderate"},
-                        {"predicate": "source_control_id", "object": control["control_id"], "verification_status": "moderate"},
+                        {
+                            "predicate": "configuration_control",
+                            "object": control["title"],
+                            "verification_status": "moderate",
+                        },
+                        {
+                            "predicate": "source_control_id",
+                            "object": control["control_id"],
+                            "verification_status": "moderate",
+                        },
                     ],
                 }
                 if builder.add_candidate(candidate):

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import hashlib
-from contextlib import closing
 import json
 import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 from cver.knowledge.candidate_importer import import_candidate_bundle
@@ -19,7 +19,9 @@ class CandidatePipelineTests(unittest.TestCase):
     def _bundle(self, root: Path) -> Path:
         bundle = root / "bundle"
         builder = CandidateBundleBuilder(bundle, "unit-test", "1.0.0", "test")
-        raw = builder.store_raw("CVE-2024-21626", b'{"id":"CVE-2024-21626"}\n', suffix=".json", media_type="application/json")
+        raw = builder.store_raw(
+            "CVE-2024-21626", b'{"id":"CVE-2024-21626"}\n', suffix=".json", media_type="application/json"
+        )
         builder.add_candidate(
             {
                 "record_type": "vulnerability",
@@ -107,7 +109,10 @@ class CandidatePipelineTests(unittest.TestCase):
             import_candidate_bundle(db_path=db_path, bundle_dir=bundle, actor_id="researcher")
             with closing(sqlite3.connect(db_path)) as connection:
                 connection.execute(
-                    "UPDATE kb_records SET status='verified',root_cause_l1='RC-1',root_cause_l2='RC-1.1',review_status='approved'"
+                    "UPDATE kb_records SET status='verified',"
+                    "root_cause_l1='RC-1', "
+                    "root_cause_l2='RC-1.1', "
+                    "review_status='approved'"
                 )
                 connection.commit()
             second_bundle = self._bundle(root / "second")
