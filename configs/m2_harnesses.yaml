@@ -1,0 +1,21 @@
+schema_version: 1
+promotion_gate:
+  confirmed_crash_requires:
+    - a newly created crash artifact
+    - an ASan/UBSan/MSan/LSan signature
+  prohibited:
+    - promotion from exit code alone
+    - promotion from LLM output alone
+harnesses:
+  oci-runtime-input:
+    boundary: runtime/shim OCI and annotation input
+    sanitizer: address,undefined
+  kata-agent-wire:
+    boundary: length-prefixed kata-agent protobuf/ttrpc wire data
+    sanitizer: address,undefined
+  virtiofs-vsock-boundary:
+    boundary: bounded FUSE and AF_VSOCK headers
+    sanitizer: address,undefined
+qemu_native_adapter:
+  balanced_profile: readiness_only
+  deep_profile: explicit source-pinned incremental build

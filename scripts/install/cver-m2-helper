@@ -1,0 +1,394 @@
+#!/usr/bin/env python3
+"""Root-owned, fixed-function helper for CVER M2.
+
+This helper deliberately exposes no arbitrary command, package, path, environment,
+or guest-command interface. Install it root:root mode 0755 under /usr/local/libexec.
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import re
+import shutil
+import signal
+import subprocess
+import sys
+import tempfile
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+CONFIG = Path("/opt/kata/share/defaults/kata-containers/configuration-qemu.toml")
+BACKUP_DIR = Path("/var/backups/cver-kata")
+STATE_DIR = Path("/var/lib/cver/kata-compat")
+MANIFEST = STATE_DIR / "last-apply.json"
+SMOKE_IMAGE = "docker.io/cver/kata-smoke:arm64"
+SOURCE_NAMESPACE = "default"
+NAMESPACE_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,63}$")
+DEPENDENCIES = (
+    "git",
+    "ca-certificates",
+    "curl",
+    "build-essential",
+    "clang-18",
+    "llvm-18",
+    "libclang-rt-18-dev",
+    "libfuzzer-18-dev",
+    "cmake",
+    "ninja-build",
+    "pkg-config",
+    "protobuf-compiler",
+    "protobuf-compiler-grpc",
+    "libprotobuf-dev",
+    "libgrpc++-dev",
+    "jq",
+    "sqlite3",
+    "keyutils",
+)
+
+
+def now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def emit(payload: dict[str, Any], code: int = 0) -> int:
+    print(json.dumps(payload, ensure_ascii=False, indent=2, default=str))
+    return code
+
+
+def run(argv: list[str], *, timeout: float = 180.0, capture: bool = True) -> subprocess.CompletedProcess[str]:
+    env = {
+        "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/kata/bin",
+        "LANG": "C.UTF-8",
+        "LC_ALL": "C.UTF-8",
+    }
+    return subprocess.run(
+        argv,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE if capture else None,
+        stderr=subprocess.PIPE if capture else None,
+        text=True,
+        timeout=timeout,
+        check=False,
+        env=env,
+    )
+
+
+def validate_namespace(value: str) -> str:
+    if not NAMESPACE_RE.fullmatch(value):
+        raise ValueError("invalid containerd namespace")
+    return value
+
+
+def sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def cpu_features_line() -> str | None:
+    if not CONFIG.is_file():
+        return None
+    for line in CONFIG.read_text(encoding="utf-8", errors="replace").splitlines():
+        if re.match(r"^\s*cpu_features\s*=", line):
+            return line.strip()
+    return None
+
+
+def compat_check() -> int:
+    line = cpu_features_line()
+    state = "missing_config"
+    compatible = False
+    if line == 'cpu_features = ""':
+        state = "compatible_override_applied"
+        compatible = True
+    elif line == 'cpu_features = "pmu=off"':
+        state = "blocked_qemu_arm64_pmu_property_mismatch"
+    elif line is not None:
+        state = "custom_value_requires_review"
+    qemu = run(["/opt/kata/bin/qemu-system-aarch64", "--version"], timeout=20) if Path(
+        "/opt/kata/bin/qemu-system-aarch64"
+    ).is_file() else None
+    kata = run(["/opt/kata/bin/kata-runtime", "--version"], timeout=20) if Path(
+        "/opt/kata/bin/kata-runtime"
+    ).is_file() else None
+    return emit(
+        {
+            "ok": compatible,
+            "status": state,
+            "config": str(CONFIG),
+            "cpu_features": line,
+            "qemu_version": (qemu.stdout or qemu.stderr).strip() if qemu else None,
+            "kata_version": (kata.stdout or kata.stderr).strip() if kata else None,
+            "manifest": str(MANIFEST) if MANIFEST.is_file() else None,
+        },
+        0 if compatible else 2,
+    )
+
+
+def image_exists(namespace: str) -> bool:
+    result = run(["/usr/bin/ctr", "-n", namespace, "images", "list", "-q"], timeout=30)
+    return result.returncode == 0 and SMOKE_IMAGE in result.stdout.splitlines()
+
+
+def prepare_smoke_image(namespace: str) -> dict[str, Any]:
+    namespace = validate_namespace(namespace)
+    if image_exists(namespace):
+        return {"ok": True, "status": "already_present", "namespace": namespace, "image": SMOKE_IMAGE}
+    if not image_exists(SOURCE_NAMESPACE):
+        return {
+            "ok": False,
+            "status": "blocked",
+            "reason": f"{SMOKE_IMAGE} is missing from source namespace {SOURCE_NAMESPACE}",
+        }
+    state = Path("/var/lib/cver-m2")
+    state.mkdir(parents=True, exist_ok=True, mode=0o750)
+    archive = state / "kata-smoke-arm64.tar"
+    exported = run(
+        ["/usr/bin/ctr", "-n", SOURCE_NAMESPACE, "images", "export", str(archive), SMOKE_IMAGE],
+        timeout=180,
+    )
+    if exported.returncode != 0:
+        return {"ok": False, "status": "failed", "stage": "export", "stderr": exported.stderr[-4000:]}
+    imported = run(["/usr/bin/ctr", "-n", namespace, "images", "import", str(archive)], timeout=180)
+    try:
+        archive.unlink(missing_ok=True)
+    except OSError:
+        pass
+    return {
+        "ok": imported.returncode == 0 and image_exists(namespace),
+        "status": "imported" if imported.returncode == 0 and image_exists(namespace) else "failed",
+        "namespace": namespace,
+        "image": SMOKE_IMAGE,
+        "stderr": imported.stderr[-4000:],
+    }
+
+
+def cleanup(namespace: str, cid: str) -> None:
+    fixed = ["/usr/bin/ctr", "-n", namespace]
+    for suffix in (
+        ["tasks", "kill", "--signal", "SIGKILL", cid],
+        ["tasks", "rm", "-f", cid],
+        ["containers", "rm", cid],
+    ):
+        try:
+            run([*fixed, *suffix], timeout=20)
+        except Exception:
+            pass
+
+
+def kata_smoke(namespace: str) -> dict[str, Any]:
+    namespace = validate_namespace(namespace)
+    prepared = prepare_smoke_image(namespace)
+    if not prepared.get("ok"):
+        return prepared
+    cid = f"cver-m2-smoke-{int(time.time())}"
+    log_dir = Path("/var/lib/cver-m2/smoke")
+    log_dir.mkdir(parents=True, exist_ok=True, mode=0o750)
+    log_path = log_dir / f"{cid}.log"
+    argv = [
+        "/usr/bin/ctr",
+        "-n",
+        namespace,
+        "run",
+        "--rm",
+        "--runtime",
+        "io.containerd.kata.v2",
+        SMOKE_IMAGE,
+        cid,
+        "/bin/busybox",
+        "sh",
+        "-c",
+        "echo KATA_M2_SMOKE_OK; uname -a; cat /proc/1/cgroup 2>/dev/null || true",
+    ]
+    cleanup(namespace, cid)
+    with log_path.open("wb") as output:
+        process = subprocess.Popen(
+            argv,
+            stdin=subprocess.DEVNULL,
+            stdout=output,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+            env={"PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/kata/bin"},
+        )
+    marker = False
+    guest_kernel = None
+    for _ in range(75):
+        time.sleep(1)
+        data = log_path.read_text(encoding="utf-8", errors="replace") if log_path.is_file() else ""
+        marker = "KATA_M2_SMOKE_OK" in data
+        guest_kernel = next((line for line in data.splitlines() if line.startswith("Linux ")), None)
+        if marker:
+            break
+        if process.poll() is not None:
+            break
+    # The guest evidence is authoritative; ctr --rm cleanup can lag on this host.
+    if process.poll() is None:
+        try:
+            os.killpg(process.pid, signal.SIGTERM)
+            process.wait(timeout=3)
+        except Exception:
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+    cleanup(namespace, cid)
+    content = log_path.read_text(encoding="utf-8", errors="replace") if log_path.is_file() else ""
+    marker = marker or "KATA_M2_SMOKE_OK" in content
+    guest_kernel = guest_kernel or next((line for line in content.splitlines() if line.startswith("Linux ")), None)
+    architecture_ok = bool(guest_kernel and "aarch64" in guest_kernel)
+    return {
+        "ok": marker and architecture_ok,
+        "status": "passed" if marker and architecture_ok else "failed",
+        "namespace": namespace,
+        "image": SMOKE_IMAGE,
+        "guest_kernel": guest_kernel,
+        "log_path": str(log_path),
+        "log_sha256": sha256(log_path) if log_path.is_file() else None,
+        "output_tail": content[-8000:],
+    }
+
+
+def compat_apply(confirm: bool) -> int:
+    if not confirm:
+        return emit({"ok": False, "status": "confirmation_required"}, 2)
+    if not CONFIG.is_file():
+        return emit({"ok": False, "status": "missing_config", "config": str(CONFIG)}, 2)
+    original = CONFIG.read_text(encoding="utf-8")
+    old = 'cpu_features = "pmu=off"'
+    new = 'cpu_features = ""'
+    if original.count(new) == 1 and original.count(old) == 0:
+        smoke = kata_smoke(SOURCE_NAMESPACE)
+        return emit({"ok": bool(smoke.get("ok")), "status": "already_applied", "smoke": smoke}, 0 if smoke.get("ok") else 2)
+    if original.count(old) != 1:
+        return emit(
+            {
+                "ok": False,
+                "status": "unexpected_config",
+                "cpu_features": cpu_features_line(),
+                "reason": "refusing to modify a non-exact configuration",
+            },
+            2,
+        )
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True, mode=0o750)
+    STATE_DIR.mkdir(parents=True, exist_ok=True, mode=0o750)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    backup = BACKUP_DIR / f"configuration-qemu.toml.{stamp}.bak"
+    shutil.copy2(CONFIG, backup)
+    original_hash = sha256(CONFIG)
+    if sha256(backup) != original_hash:
+        return emit({"ok": False, "status": "backup_hash_mismatch"}, 2)
+    fd, temp_name = tempfile.mkstemp(prefix="cver-kata-config-", dir=str(CONFIG.parent))
+    temp = Path(temp_name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(original.replace(old, new, 1))
+            handle.flush()
+            os.fsync(handle.fileno())
+        shutil.copymode(CONFIG, temp)
+        os.replace(temp, CONFIG)
+    finally:
+        temp.unlink(missing_ok=True)
+    smoke = kata_smoke(SOURCE_NAMESPACE)
+    if not smoke.get("ok"):
+        shutil.copy2(backup, CONFIG)
+        return emit({"ok": False, "status": "verification_failed_rolled_back", "backup": str(backup), "smoke": smoke}, 2)
+    manifest = {
+        "schema_version": 1,
+        "applied_at": now(),
+        "config": str(CONFIG),
+        "backup": str(backup),
+        "original_sha256": original_hash,
+        "backup_sha256": sha256(backup),
+        "updated_sha256": sha256(CONFIG),
+        "change": {"from": old, "to": new},
+        "smoke": smoke,
+    }
+    MANIFEST.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    os.chmod(MANIFEST, 0o600)
+    return emit({"ok": True, "status": "applied", "manifest": str(MANIFEST), "backup": str(backup), "smoke": smoke})
+
+
+def compat_restore(confirm: bool) -> int:
+    if not confirm:
+        return emit({"ok": False, "status": "confirmation_required"}, 2)
+    if not MANIFEST.is_file():
+        return emit({"ok": False, "status": "missing_manifest", "manifest": str(MANIFEST)}, 2)
+    payload = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    backup = Path(payload.get("backup", ""))
+    expected = payload.get("backup_sha256")
+    if not backup.is_file() or not expected or sha256(backup) != expected:
+        return emit({"ok": False, "status": "backup_integrity_failure"}, 2)
+    pre = CONFIG.with_name(CONFIG.name + ".pre-restore-" + datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S"))
+    shutil.copy2(CONFIG, pre)
+    shutil.copy2(backup, CONFIG)
+    return emit({"ok": True, "status": "restored", "backup": str(backup), "pre_restore_copy": str(pre), "cpu_features": cpu_features_line()})
+
+
+def install_deps(confirm: bool) -> int:
+    if not confirm:
+        return emit({"ok": False, "status": "confirmation_required", "packages": DEPENDENCIES}, 2)
+    update = run(["/usr/bin/apt-get", "update"], timeout=600)
+    if update.returncode != 0:
+        return emit({"ok": False, "status": "apt_update_failed", "stderr": update.stderr[-8000:]}, 2)
+    install = run(["/usr/bin/apt-get", "install", "-y", "--no-install-recommends", *DEPENDENCIES], timeout=1800)
+    return emit(
+        {
+            "ok": install.returncode == 0,
+            "status": "installed" if install.returncode == 0 else "install_failed",
+            "packages": DEPENDENCIES,
+            "stdout_tail": install.stdout[-8000:],
+            "stderr_tail": install.stderr[-8000:],
+        },
+        0 if install.returncode == 0 else 2,
+    )
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="cver-m2-helper")
+    sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("compat-check")
+    apply_parser = sub.add_parser("compat-apply")
+    apply_parser.add_argument("--confirm", action="store_true")
+    restore_parser = sub.add_parser("compat-restore")
+    restore_parser.add_argument("--confirm", action="store_true")
+    prepare = sub.add_parser("prepare-smoke-image")
+    prepare.add_argument("--namespace", required=True)
+    smoke = sub.add_parser("kata-smoke")
+    smoke.add_argument("--namespace", required=True)
+    install = sub.add_parser("install-deps")
+    install.add_argument("--confirm", action="store_true")
+    return parser
+
+
+def main() -> int:
+    if os.geteuid() != 0:
+        return emit({"ok": False, "status": "root_required"}, 2)
+    os.umask(0o027)
+    args = build_parser().parse_args()
+    try:
+        if args.command == "compat-check":
+            return compat_check()
+        if args.command == "compat-apply":
+            return compat_apply(args.confirm)
+        if args.command == "compat-restore":
+            return compat_restore(args.confirm)
+        if args.command == "prepare-smoke-image":
+            return emit(prepare_smoke_image(args.namespace), 0)
+        if args.command == "kata-smoke":
+            payload = kata_smoke(args.namespace)
+            return emit(payload, 0 if payload.get("ok") else 2)
+        if args.command == "install-deps":
+            return install_deps(args.confirm)
+    except (ValueError, OSError, subprocess.SubprocessError, json.JSONDecodeError) as exc:
+        return emit({"ok": False, "status": "error", "error": f"{type(exc).__name__}: {exc}"}, 2)
+    return emit({"ok": False, "status": "unknown_command"}, 2)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

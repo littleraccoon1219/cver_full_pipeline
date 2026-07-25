@@ -1,0 +1,22 @@
+schema_version: 1
+automatic_fetch: false
+tracks:
+  installed-baseline:
+    purpose: known-vulnerability matching and environment exploitability
+    version_policy: match installed binary; unresolved mappings are explicit
+  research-head:
+    purpose: current source review and unknown-vulnerability candidate discovery
+    version_policy: resolve HEAD once, then pin the commit and source digest
+components:
+  kata-containers:
+    url: https://github.com/kata-containers/kata-containers.git
+  qemu:
+    url: https://github.com/qemu/qemu.git
+  virtiofsd:
+    url: https://gitlab.com/virtio-fs/virtiofsd.git
+  cloud-hypervisor:
+    url: https://github.com/cloud-hypervisor/cloud-hypervisor.git
+  firecracker:
+    url: https://github.com/firecracker-microvm/firecracker.git
+  linux:
+    url: https://github.com/torvalds/linux.git

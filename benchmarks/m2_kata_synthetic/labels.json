@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "expected_pattern_codes": [
+    "M2-BOUNDARY-VSOCK",
+    "M2-BOUNDARY-VIRTIOFS",
+    "M2-OCI-ANNOTATION",
+    "M2-UNSAFE-MEMORY",
+    "M2-PATH-BOUNDARY",
+    "M2-IOCTL-BOUNDARY",
+    "M2-SECURITY-DISABLE"
+  ],
+  "negative_pattern_codes": []
+}

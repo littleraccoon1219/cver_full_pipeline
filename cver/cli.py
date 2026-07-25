@@ -155,12 +155,20 @@ def build_parser() -> argparse.ArgumentParser:
     )
     replay.add_argument("--target", required=True, help="runc binary or source checkout")
     replay.add_argument("--project-root", default=".")
+
+    m2 = sub.add_parser("m2", help="run the M2 Kata vulnerability-discovery stage")
+    m2.add_argument("m2_args", nargs=argparse.REMAINDER)
     return parser
 
 
 def main() -> None:
     args = build_parser().parse_args()
     command = args.cmd or "doctor"
+
+    if command == "m2":
+        from .m2.cli import main as m2_main
+
+        raise SystemExit(m2_main(args.m2_args))
 
     if command in {
         "discovery-init",

@@ -53,3 +53,6 @@ select = ["E", "F", "I", "B", "UP"]
 "cver/discovery/db.py" = ["E501"]
 "cver/knowledge/schema.py" = ["E501"]
 "cver/knowledge/candidate_importer.py" = ["E501"]
+
+[tool.setuptools.package-data]
+"cver.m2" = ["harnesses/*.cc"]

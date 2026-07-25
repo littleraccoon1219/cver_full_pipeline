@@ -30,3 +30,5 @@ logs/
 *.key
 data/candidates/
 data/zero_day_vault/
+.env.m2
+data/m2/
