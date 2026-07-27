@@ -32,3 +32,7 @@ data/candidates/
 data/zero_day_vault/
 .env.m2
 data/m2/
+
+# Rust compilation artifacts
+target/
+**/target/
