@@ -1,17 +1,19 @@
 {
   "schema_version": 1,
-  "adapter_id": "kata-agent-v3-template",
+  "adapter_id": "kata-agent-3.32.0-c7d148d75131",
   "component": "kata-agent",
-  "version_selector": "3\\.[0-9]+\\.[0-9]+(?:[-+].*)?",
+  "version_selector": "3\\.32\\.0",
   "source_path": "src/agent/src/rpc.rs",
-  "approved_interface_fingerprints": [],
+  "approved_interface_fingerprints": [
+    "c7d148d7513144336be3f048137a2d68f1e04e7bee3830374e434d14bf8491af"
+  ],
   "handlers": [
     {
       "handler_id": "ReadStdout",
       "method": "read_stdout",
       "request_type": "ReadStreamRequest",
       "response_type": "ttrpc::Result<ReadStreamResponse>",
-      "signature_sha256": "",
+      "signature_sha256": "57535d11256512187eb08ba02628b0fea23bb12a79ad59f7dcb41f26dc4d06ee",
       "group": "filesystem-stream"
     },
     {
@@ -19,7 +21,7 @@
       "method": "read_stderr",
       "request_type": "ReadStreamRequest",
       "response_type": "ttrpc::Result<ReadStreamResponse>",
-      "signature_sha256": "",
+      "signature_sha256": "ab1cda8caf9c124ff5d24a7ffc3e4fdee7eb6624fffa09db4df2267b76ccc623",
       "group": "filesystem-stream"
     },
     {
@@ -27,39 +29,39 @@
       "method": "write_stdin",
       "request_type": "WriteStreamRequest",
       "response_type": "ttrpc::Result<WriteStreamResponse>",
-      "signature_sha256": "",
+      "signature_sha256": "1114ffc062e5a7e1811ab1898c74d574f8df8fedd1c3b755d6e4dccf80eb81ff",
       "group": "filesystem-stream"
     },
     {
       "handler_id": "ExecProcess",
       "method": "exec_process",
       "request_type": "ExecProcessRequest",
-      "response_type": null,
-      "signature_sha256": "",
+      "response_type": "ttrpc::Result<Empty>",
+      "signature_sha256": "f5eb1463f00caa0d0f233e7560afaecfab2e2da4667843ea80ef495ec4cab788",
       "group": "process-lifecycle"
     },
     {
       "handler_id": "SignalProcess",
       "method": "signal_process",
       "request_type": "SignalProcessRequest",
-      "response_type": null,
-      "signature_sha256": "",
+      "response_type": "ttrpc::Result<Empty>",
+      "signature_sha256": "180bb517d4d9ec66c3b76df765b70ea79a50754e2e450b7cb3138315bf5899a3",
       "group": "process-lifecycle"
     },
     {
       "handler_id": "WaitProcess",
       "method": "wait_process",
       "request_type": "WaitProcessRequest",
-      "response_type": null,
-      "signature_sha256": "",
+      "response_type": "ttrpc::Result<WaitProcessResponse>",
+      "signature_sha256": "e5a4a95ea510d2dabd8e39be1da9578d872876eb0bf655c2511095c2a4dc2f9e",
       "group": "process-lifecycle"
     },
     {
       "handler_id": "UpdateContainer",
       "method": "update_container",
       "request_type": "UpdateContainerRequest",
-      "response_type": null,
-      "signature_sha256": "",
+      "response_type": "ttrpc::Result<Empty>",
+      "signature_sha256": "06e759b6e4eb5c86a22cf71bdd3c6ccf116063ede67adaa448e8c6dbcd3185a8",
       "group": "process-lifecycle"
     }
   ],
@@ -87,6 +89,6 @@
   "approved": false,
   "approved_by": null,
   "approved_at": null,
-  "source_commit": null,
-  "source_sha256": null
+  "source_commit": "337b6002681479fb6a605ca8a7a1138e81b6098c",
+  "source_sha256": "49ce3f3b27b3b233a13320b682ec7c819237561a6873d98d4ec59d9a081d75b6"
 }

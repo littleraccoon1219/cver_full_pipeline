@@ -11,20 +11,56 @@ from .models import HandlerTarget, SourceInspection, asdict
 
 
 DEFAULT_HANDLERS: dict[str, dict[str, Any]] = {
-    "ReadStream": {"method": "read_stream", "group": "filesystem-stream", "stateful": True},
-    "WriteStream": {"method": "write_stream", "group": "filesystem-stream", "stateful": True},
-    "ExecProcess": {"method": "exec_process", "group": "process-lifecycle", "stateful": True},
-    "SignalProcess": {"method": "signal_process", "group": "process-lifecycle", "stateful": True},
-    "WaitProcess": {"method": "wait_process", "group": "process-lifecycle", "stateful": True},
-    "UpdateContainer": {"method": "update_container", "group": "process-lifecycle", "stateful": True},
+    "ReadStdout": {
+        "method": "read_stdout",
+        "group": "filesystem-stream",
+        "stateful": True,
+    },
+    "ReadStderr": {
+        "method": "read_stderr",
+        "group": "filesystem-stream",
+        "stateful": True,
+    },
+    "WriteStdin": {
+        "method": "write_stdin",
+        "group": "filesystem-stream",
+        "stateful": True,
+    },
+    "ExecProcess": {
+        "method": "exec_process",
+        "group": "process-lifecycle",
+        "stateful": True,
+    },
+    "SignalProcess": {
+        "method": "signal_process",
+        "group": "process-lifecycle",
+        "stateful": True,
+    },
+    "WaitProcess": {
+        "method": "wait_process",
+        "group": "process-lifecycle",
+        "stateful": True,
+    },
+    "UpdateContainer": {
+        "method": "update_container",
+        "group": "process-lifecycle",
+        "stateful": True,
+    },
 }
 
 CONCURRENCY_PAIRS: dict[str, tuple[str, ...]] = {
-    "ReadStream": ("WaitProcess",),
-    "WriteStream": ("WaitProcess",),
+    "ReadStdout": ("WaitProcess",),
+    "ReadStderr": ("WaitProcess",),
+    "WriteStdin": ("WaitProcess",),
     "ExecProcess": ("SignalProcess", "WaitProcess"),
     "SignalProcess": ("WaitProcess",),
-    "WaitProcess": ("SignalProcess", "UpdateContainer"),
+    "WaitProcess": (
+        "SignalProcess",
+        "UpdateContainer",
+        "ReadStdout",
+        "ReadStderr",
+        "WriteStdin",
+    ),
     "UpdateContainer": ("WaitProcess",),
 }
 

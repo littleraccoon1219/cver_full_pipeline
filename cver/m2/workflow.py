@@ -353,8 +353,9 @@ class M2Workflow:
                 "reason": "real handler execution requires --confirm-native-fuzz",
             }
         handlers = request.get("real_fuzz_handlers") or [
-            "ReadStream",
-            "WriteStream",
+            "ReadStdout",
+            "ReadStderr",
+            "WriteStdin",
             "ExecProcess",
             "SignalProcess",
             "WaitProcess",

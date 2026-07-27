@@ -11,8 +11,9 @@ from .runtime_assets import RuntimeAssetManager
 
 
 ALLOWED_PROFILES = {
-    "ReadStream": {"rpc_only", "bounded_stdio"},
-    "WriteStream": {"rpc_only", "bounded_stdio"},
+    "ReadStdout": {"rpc_only", "bounded_stdio"},
+    "ReadStderr": {"rpc_only", "bounded_stdio"},
+    "WriteStdin": {"rpc_only", "bounded_stdio"},
     "ExecProcess": {"rpc_only", "test_process"},
     "SignalProcess": {"rpc_only", "non_fatal_signal"},
     "WaitProcess": {"rpc_only", "bounded_wait"},

@@ -18,8 +18,9 @@ from cver.m2.rules_engine import ExploitabilityLadder, ThreeValuedRuleEngine, Tr
 
 
 HANDLERS = {
-    "read_stream": "ReadStreamRequest",
-    "write_stream": "WriteStreamRequest",
+    "read_stdout": "ReadStreamRequest",
+    "read_stderr": "ReadStreamRequest",
+    "write_stdin": "WriteStreamRequest",
     "exec_process": "ExecProcessRequest",
     "signal_process": "SignalProcessRequest",
     "wait_process": "WaitProcessRequest",
@@ -32,7 +33,7 @@ def _kata_source(root: Path, *, changed_write_type: bool = False) -> Path:
     rpc.parent.mkdir(parents=True, exist_ok=True)
     methods = []
     for method, request in HANDLERS.items():
-        if method == "write_stream" and changed_write_type:
+        if method == "write_stdin" and changed_write_type:
             request = "ChangedWriteStreamRequest"
         methods.append(
             "#[async_trait]\n"
@@ -57,13 +58,14 @@ def _approved_adapter(source: Path, registry: AdapterRegistry) -> tuple[dict, Pa
     return registry.check(inspection), Path(approved["manifest_path"])
 
 
-def test_inspector_finds_six_real_rpc_boundaries(tmp_path: Path):
+def test_inspector_finds_seven_real_rpc_boundaries(tmp_path: Path):
     inspection = KataAgentInspector().inspect(_kata_source(tmp_path / "kata"), version="3.32.0")
     assert inspection.status == "COMPATIBLE"
     assert not inspection.missing_handlers
     assert {item.handler_id for item in inspection.handlers} == {
-        "ReadStream",
-        "WriteStream",
+        "ReadStdout",
+        "ReadStderr",
+        "WriteStdin",
         "ExecProcess",
         "SignalProcess",
         "WaitProcess",

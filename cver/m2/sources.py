@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import hashlib
 import json
 import re
@@ -57,20 +58,24 @@ class SourceManager:
         qemu_version = env.get("qemu", {}).get("version")
         virtiofsd_version = env.get("virtiofsd", {}).get("version")
         return {
-            "kata-containers": env.get("kata", {}).get("commit"),
-            "qemu": f"v{qemu_version}" if qemu_version else None,
-            "virtiofsd": f"v{virtiofsd_version}" if virtiofsd_version else None,
-            "cloud-hypervisor": None,
-            "firecracker": None,
-            "linux": self._kernel_tag(env.get("host", {}).get("kernel")),
+            "kata-containers": (os.getenv("CVER_M2_KATA_SOURCE_REF")or env.get("kata", {}).get("commit")),
+            "qemu": (os.getenv("CVER_M2_QEMU_SOURCE_REF")or (f"v{qemu_version}" if qemu_version else None)),
+            "virtiofsd": (os.getenv("CVER_M2_VIRTIOFSD_SOURCE_REF")or (f"v{virtiofsd_version}" if virtiofsd_version else None)),
+            "cloud-hypervisor": (os.getenv("CVER_M2_CLOUD_HYPERVISOR_SOURCE_REF") or None),
+            "firecracker": (os.getenv("CVER_M2_FIRECRACKER_SOURCE_REF") or None),
+            "linux": (os.getenv("CVER_M2_LINUX_SOURCE_REF")or self._kernel_tag(env.get("host", {}).get("kernel"))),
         }
+
 
     @staticmethod
     def _kernel_tag(kernel: str | None) -> str | None:
         if not kernel:
             return None
-        match = re.match(r"(\d+\.\d+(?:\.\d+)?)", kernel)
-        return f"v{match.group(1)}" if match else None
+        # Ubuntu内核如6.8.0-136-generic映射到上游主线标签v6.8
+        match = re.match(r"(\d+)\.(\d+)", kernel)
+        if not match:
+            return None
+        return f"v{match.group(1)}.{match.group(2)}"
 
     def plan(self, components: Iterable[str] | None = None) -> dict[str, Any]:
         installed = self._installed_refs()

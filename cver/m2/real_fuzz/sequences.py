@@ -18,7 +18,7 @@ class RpcStep:
 BASE_SEQUENCES: dict[str, tuple[RpcStep, ...]] = {
     "exec-write-signal-wait": (
         RpcStep("ExecProcess", "valid_minimal", ("process_created",)),
-        RpcStep("WriteStream", "bounded_stdio", ("process_created", "process_running")),
+        RpcStep("WriteStdin", "bounded_stdio", ("process_created", "process_running")),
         RpcStep("SignalProcess", "non_fatal_signal", ("process_running",)),
         RpcStep("WaitProcess", "bounded_wait", ("process_running", "process_exited")),
     ),
@@ -31,7 +31,7 @@ BASE_SEQUENCES: dict[str, tuple[RpcStep, ...]] = {
 
 CONCURRENCY_SCENARIOS: dict[str, tuple[str, str]] = {
     "wait-signal": ("WaitProcess", "SignalProcess"),
-    "write-exit": ("WriteStream", "WaitProcess"),
+    "write-exit": ("WriteStdin", "WaitProcess"),
     "update-wait": ("UpdateContainer", "WaitProcess"),
 }
 
