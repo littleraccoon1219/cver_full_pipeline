@@ -13,7 +13,7 @@ def test_balanced_budget_matches_acceptance():
 
 def test_repository_persists_job_and_events(m2_settings):
     repository = M2Repository(m2_settings.runtime_db)
-    assert repository.migrate()["schema_version"] == 1
+    assert repository.migrate()["schema_version"] == 2
     job_id = repository.create_job("kata-discovery", "balanced", {"actor": "tester"})
     repository.update_job(job_id, status="running", phase="environment", result={"x": 1})
     repository.event(job_id, "info", "test", "event")

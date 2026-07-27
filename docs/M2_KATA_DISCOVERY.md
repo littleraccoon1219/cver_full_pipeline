@@ -11,7 +11,7 @@ M2仅执行授权实验室中的防御性、非武器化验证。它不会生成
 ```bash
 cd ~/cver_full_pipeline
 git rev-parse HEAD
-# 必须是 e0ba00715dfbafc68068aad7363e9d6c71b03e14
+# 本地补丁基线必须是 3200cec5f3aa6f24415f6eb26f1bb07ae575ff6f
 
 python3 -m venv .venv
 source .venv/bin/activate
@@ -113,3 +113,10 @@ python -m cver m2 kata-compat restore --confirm
 ```
 
 普通发现任务不会自行永久修改系统配置。
+
+
+## 0.3.0扩展文档
+
+- `M2_REAL_KATA_FUZZING.md`：真实Handler源码Fuzz和Adapter审批；
+- `M2_VERSIONED_RUNTIME_REPLAY.md`：多版本资产与Guest复验计划；
+- `M2_MULTI_AGENT_EVALUATION.md`：六Agent、证据图、数据集和评测。

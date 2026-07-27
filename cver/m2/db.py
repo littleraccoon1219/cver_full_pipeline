@@ -108,6 +108,73 @@ CREATE TABLE IF NOT EXISTS m2_fuzz_runs(
     payload_json TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS m2_adapter_evaluations(
+    evaluation_id TEXT PRIMARY KEY,
+    job_id TEXT,
+    adapter_id TEXT,
+    source_track TEXT NOT NULL,
+    kata_version TEXT NOT NULL,
+    interface_fingerprint TEXT,
+    state TEXT NOT NULL,
+    payload_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS m2_real_fuzz_runs(
+    run_id TEXT PRIMARY KEY,
+    job_id TEXT,
+    source_track TEXT NOT NULL,
+    kata_version TEXT NOT NULL,
+    source_commit TEXT,
+    adapter_id TEXT,
+    handler_id TEXT NOT NULL,
+    mode TEXT NOT NULL,
+    status TEXT NOT NULL,
+    duration_seconds REAL NOT NULL DEFAULT 0,
+    exit_code INTEGER,
+    payload_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_m2_real_fuzz_track ON m2_real_fuzz_runs(source_track,kata_version,handler_id);
+CREATE TABLE IF NOT EXISTS m2_candidates_v2(
+    candidate_id TEXT PRIMARY KEY,
+    job_id TEXT,
+    dedup_key TEXT NOT NULL,
+    level TEXT NOT NULL,
+    component TEXT NOT NULL,
+    kata_version TEXT NOT NULL,
+    source_track TEXT NOT NULL,
+    handler_id TEXT NOT NULL,
+    finding_type TEXT NOT NULL,
+    payload_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_m2_candidates_v2_dedup ON m2_candidates_v2(dedup_key,source_track,kata_version);
+CREATE TABLE IF NOT EXISTS m2_runtime_asset_manifests(
+    manifest_id TEXT PRIMARY KEY,
+    version TEXT NOT NULL,
+    status TEXT NOT NULL,
+    manifest_path TEXT,
+    payload_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS m2_agent_runs(
+    run_id TEXT PRIMARY KEY,
+    job_id TEXT,
+    candidate_id TEXT,
+    model TEXT,
+    status TEXT NOT NULL,
+    payload_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS m2_dataset_releases(
+    release_id TEXT PRIMARY KEY,
+    strategy TEXT NOT NULL,
+    leakage_passed INTEGER NOT NULL,
+    manifest_path TEXT,
+    payload_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS m2_audit(
     audit_id INTEGER PRIMARY KEY AUTOINCREMENT,
     created_at TEXT NOT NULL,
@@ -141,9 +208,9 @@ class M2Repository:
         with self.connect() as connection:
             connection.executescript(SCHEMA)
             connection.execute(
-                "INSERT OR REPLACE INTO m2_meta(key,value) VALUES('schema_version','1')"
+                "INSERT OR REPLACE INTO m2_meta(key,value) VALUES('schema_version','2')"
             )
-        return {"ok": True, "schema_version": 1, "path": str(self.path)}
+        return {"ok": True, "schema_version": 2, "path": str(self.path)}
 
     def create_job(self, kind: str, profile: str, request: dict[str, Any]) -> str:
         self.migrate()
@@ -379,6 +446,147 @@ class M2Repository:
             )
         return run_id
 
+    def add_adapter_evaluation(self, job_id: str | None, payload: dict[str, Any]) -> str:
+        evaluation_id = payload.get("evaluation_id") or f"adapter-{uuid.uuid4().hex}"
+        inspection = payload.get("inspection") or {}
+        adapter = payload.get("adapter") or {}
+        with self.connect() as connection:
+            connection.execute(
+                """INSERT OR REPLACE INTO m2_adapter_evaluations(
+                    evaluation_id,job_id,adapter_id,source_track,kata_version,interface_fingerprint,
+                    state,payload_json,created_at
+                ) VALUES(?,?,?,?,?,?,?,?,?)""",
+                (
+                    evaluation_id,
+                    job_id,
+                    adapter.get("adapter_id"),
+                    payload.get("track", "unknown"),
+                    inspection.get("version", "unknown"),
+                    inspection.get("interface_fingerprint"),
+                    payload.get("state") or payload.get("adapter", {}).get("state") or "unknown",
+                    json.dumps(payload, ensure_ascii=False, default=str),
+                    utc_now(),
+                ),
+            )
+        return evaluation_id
+
+    def add_real_fuzz_run(self, job_id: str | None, payload: dict[str, Any]) -> str:
+        run_id = payload.get("run_id") or f"realfuzz-{uuid.uuid4().hex}"
+        with self.connect() as connection:
+            connection.execute(
+                """INSERT OR REPLACE INTO m2_real_fuzz_runs(
+                    run_id,job_id,source_track,kata_version,source_commit,adapter_id,handler_id,
+                    mode,status,duration_seconds,exit_code,payload_json,created_at
+                ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    run_id,
+                    job_id,
+                    payload.get("source_track", "unknown"),
+                    payload.get("kata_version", "unknown"),
+                    payload.get("source_commit"),
+                    payload.get("adapter_id"),
+                    payload.get("handler_id", "unknown"),
+                    payload.get("mode", "stateless"),
+                    payload.get("status", "unknown"),
+                    payload.get("duration_seconds", 0.0),
+                    payload.get("exit_code"),
+                    json.dumps(payload, ensure_ascii=False, default=str),
+                    utc_now(),
+                ),
+            )
+        return run_id
+
+    def add_candidate_v2(self, job_id: str | None, payload: dict[str, Any]) -> str:
+        candidate_id = payload.get("candidate_id") or f"m2cand-{uuid.uuid4().hex}"
+        with self.connect() as connection:
+            connection.execute(
+                """INSERT OR REPLACE INTO m2_candidates_v2(
+                    candidate_id,job_id,dedup_key,level,component,kata_version,source_track,
+                    handler_id,finding_type,payload_json,created_at
+                ) VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    candidate_id,
+                    job_id,
+                    payload.get("dedup_key", candidate_id),
+                    payload.get("level", "OBSERVATION"),
+                    payload.get("component", "kata-agent"),
+                    payload.get("kata_version", "unknown"),
+                    payload.get("source_track", "unknown"),
+                    payload.get("handler_id", "unknown"),
+                    payload.get("finding_type", "unexpected_behavior"),
+                    json.dumps(payload, ensure_ascii=False, default=str),
+                    utc_now(),
+                ),
+            )
+        return candidate_id
+
+    def list_candidates_v2(self, limit: int = 100, level: str | None = None) -> list[dict[str, Any]]:
+        query = "SELECT payload_json FROM m2_candidates_v2"
+        parameters: list[Any] = []
+        if level:
+            query += " WHERE level=?"
+            parameters.append(level)
+        query += " ORDER BY created_at DESC LIMIT ?"
+        parameters.append(max(1, min(limit, 1000)))
+        with self.connect() as connection:
+            rows = connection.execute(query, parameters).fetchall()
+        return [json.loads(row["payload_json"]) for row in rows]
+
+    def add_runtime_asset_manifest(self, payload: dict[str, Any]) -> str:
+        manifest_id = payload.get("manifest_id") or f"runtime-assets-{uuid.uuid4().hex}"
+        with self.connect() as connection:
+            connection.execute(
+                """INSERT OR REPLACE INTO m2_runtime_asset_manifests(
+                    manifest_id,version,status,manifest_path,payload_json,created_at
+                ) VALUES(?,?,?,?,?,?)""",
+                (
+                    manifest_id,
+                    payload.get("version", "unknown"),
+                    payload.get("status", "unknown"),
+                    payload.get("manifest_path"),
+                    json.dumps(payload, ensure_ascii=False, default=str),
+                    utc_now(),
+                ),
+            )
+        return manifest_id
+
+    def add_agent_run(self, job_id: str | None, candidate_id: str | None, payload: dict[str, Any]) -> str:
+        run_id = payload.get("run_id") or f"agents-{uuid.uuid4().hex}"
+        with self.connect() as connection:
+            connection.execute(
+                """INSERT OR REPLACE INTO m2_agent_runs(
+                    run_id,job_id,candidate_id,model,status,payload_json,created_at
+                ) VALUES(?,?,?,?,?,?,?)""",
+                (
+                    run_id,
+                    job_id,
+                    candidate_id,
+                    payload.get("model"),
+                    payload.get("status", "unknown"),
+                    json.dumps(payload, ensure_ascii=False, default=str),
+                    utc_now(),
+                ),
+            )
+        return run_id
+
+    def add_dataset_release(self, payload: dict[str, Any]) -> str:
+        release_id = str(payload["release_id"])
+        with self.connect() as connection:
+            connection.execute(
+                """INSERT OR REPLACE INTO m2_dataset_releases(
+                    release_id,strategy,leakage_passed,manifest_path,payload_json,created_at
+                ) VALUES(?,?,?,?,?,?)""",
+                (
+                    release_id,
+                    payload.get("strategy", "unknown"),
+                    int(bool((payload.get("leakage_audit") or {}).get("passed"))),
+                    payload.get("manifest_path"),
+                    json.dumps(payload, ensure_ascii=False, default=str),
+                    utc_now(),
+                ),
+            )
+        return release_id
+
     def dashboard(self) -> dict[str, Any]:
         self.migrate()
         with self.connect() as connection:
@@ -400,9 +608,23 @@ class M2Repository:
                     "SELECT status,COUNT(*) AS count FROM m2_harness_runs GROUP BY status"
                 ).fetchall()
             }
+            candidate_counts = {
+                row["level"]: row["count"]
+                for row in connection.execute(
+                    "SELECT level,COUNT(*) AS count FROM m2_candidates_v2 GROUP BY level"
+                ).fetchall()
+            }
+            real_fuzz_counts = {
+                row["status"]: row["count"]
+                for row in connection.execute(
+                    "SELECT status,COUNT(*) AS count FROM m2_real_fuzz_runs GROUP BY status"
+                ).fetchall()
+            }
         return {
             "jobs": status_counts,
             "findings": finding_counts,
             "harnesses": harness_counts,
+            "real_fuzz": real_fuzz_counts,
+            "candidates_v2": candidate_counts,
             "recent_jobs": self.list_jobs(limit=10),
         }

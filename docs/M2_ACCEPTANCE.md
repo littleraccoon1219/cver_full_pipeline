@@ -15,7 +15,12 @@ bash scripts/m2/acceptance.sh
 - 短时Fuzz不把普通退出码误判为漏洞；
 - 任务数据库支持阶段状态、断点恢复、事件和审计；
 - API与Web返回脱敏数据；
-- LLM不可用时产生明确`skipped_with_reason`，不伪造评审结果。
+- LLM不可用时产生明确`skipped_with_reason`，不伪造评审结果；
+- 真实RPC Inspector识别六个Handler并生成稳定接口指纹；
+- Adapter候选不能直接执行，审批必须通过编译、接口和语义差分三项门控；
+- 多版本Runtime资产经过路径隔离和SHA-256复核；
+- 三值规则保留UNKNOWN，Agent不能提升证据等级；
+- 时间/分组切分通过CVE、Commit、Crash簇和制品Hash泄漏审计。
 
 ## ARM64 Kata主机验收
 

@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "adapter_id": "kata-agent-v3-template",
+  "component": "kata-agent",
+  "version_selector": "3\\.[0-9]+\\.[0-9]+(?:[-+].*)?",
+  "source_path": "src/agent/src/rpc.rs",
+  "approved_interface_fingerprints": [],
+  "handlers": [
+    {"handler_id": "ReadStream", "method": "read_stream", "request_type": "ReadStreamRequest", "response_type": null, "signature_sha256": "", "group": "filesystem-stream"},
+    {"handler_id": "WriteStream", "method": "write_stream", "request_type": "WriteStreamRequest", "response_type": null, "signature_sha256": "", "group": "filesystem-stream"},
+    {"handler_id": "ExecProcess", "method": "exec_process", "request_type": "ExecProcessRequest", "response_type": null, "signature_sha256": "", "group": "process-lifecycle"},
+    {"handler_id": "SignalProcess", "method": "signal_process", "request_type": "SignalProcessRequest", "response_type": null, "signature_sha256": "", "group": "process-lifecycle"},
+    {"handler_id": "WaitProcess", "method": "wait_process", "request_type": "WaitProcessRequest", "response_type": null, "signature_sha256": "", "group": "process-lifecycle"},
+    {"handler_id": "UpdateContainer", "method": "update_container", "request_type": "UpdateContainerRequest", "response_type": null, "signature_sha256": "", "group": "process-lifecycle"}
+  ],
+  "patch_policy": {
+    "feature": "cver-fuzz",
+    "allowed_changes": ["test-only visibility", "deterministic mock injection", "adapter construction"],
+    "forbidden_changes": ["validation removal", "authorization bypass", "security logic modification", "production default feature change"],
+    "automatic_execution": false,
+    "required_gates": ["human_approval", "stable_compilation_test", "interface_test", "semantic_differential_test"]
+  },
+  "approved": false,
+  "approved_by": null,
+  "approved_at": null,
+  "source_commit": null,
+  "source_sha256": null
+}

@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "recipe_id": "kata-version-specific-template",
+  "approved": false,
+  "approved_by": null,
+  "source_commit": null,
+  "timeout_seconds": 3600,
+  "commands": [],
+  "notice": "Populate only with version-specific, argument-array build commands after review. No shell is used."
+}

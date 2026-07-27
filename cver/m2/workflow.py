@@ -8,9 +8,11 @@ import uuid
 from pathlib import Path
 from typing import Any, Callable
 
+from .agents import DeepSeekMultiAgent
 from .config import M2Settings
 from .db import M2Repository
 from .environment import EnvironmentCollector
+from .evidence_graph import ExploitabilityEvidenceGraph
 from .exploitability import ExploitabilityEvaluator
 from .harnesses import HarnessManager
 from .kata import KataController
@@ -18,7 +20,10 @@ from .knowledge import ExternalCandidateCollector, TrustedKnowledgeMatcher
 from .llm import DeepSeekReviewer
 from .models import Finding, FindingStatus, Severity, to_dict
 from .reporting import ReportWriter
+from .rules_engine import ExploitabilityLadder, ThreeValuedRuleEngine, TriState
 from .sources import SOURCES, SourceManager
+from .real_fuzz.engine import RealFuzzEngine
+from .real_fuzz.triage import CandidateTriage
 from .static_analysis import AttackSurfaceScanner, KataConfigAuditor
 from .zeroday import ZeroDayGate
 
@@ -32,7 +37,12 @@ class M2Workflow:
         "llm_review",
         "harness_build",
         "fuzzing",
+        "real_fuzz_prepare",
+        "real_fuzzing",
+        "candidate_triage",
         "kata_validation",
+        "evidence_graph",
+        "multi_agent",
         "exploitability",
         "zero_day_gate",
         "report",
@@ -78,7 +88,12 @@ class M2Workflow:
             "llm_review": self._llm,
             "harness_build": self._harness_build,
             "fuzzing": self._fuzz,
+            "real_fuzz_prepare": self._real_fuzz_prepare,
+            "real_fuzzing": self._real_fuzz,
+            "candidate_triage": self._candidate_triage,
             "kata_validation": self._kata,
+            "evidence_graph": self._evidence_graph,
+            "multi_agent": self._multi_agent,
             "exploitability": self._exploitability,
             "zero_day_gate": self._zero_day,
             "report": self._report,
@@ -280,6 +295,196 @@ class M2Workflow:
             ),
         }
 
+    def _real_fuzz_prepare(self, job_id: str, request: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]:
+        if not request.get("real_source_fuzz"):
+            return {"status": "skipped_with_reason", "reason": "real source fuzzing was not requested"}
+        track = str(request.get("real_fuzz_track") or "installed-baseline")
+        source_path = request.get("real_fuzz_source")
+        if not source_path:
+            source_path = next(
+                (
+                    item.get("path")
+                    for item in result.get("sources", {}).get("results", [])
+                    if item.get("component") == "kata-containers"
+                    and item.get("track") == track
+                    and item.get("status") in {"present", "fetched"}
+                ),
+                None,
+            )
+        if not source_path:
+            return {"status": "skipped_with_reason", "reason": f"Kata source for track {track} is unavailable"}
+        version = str(
+            request.get("real_fuzz_version")
+            or result.get("environment", {}).get("kata", {}).get("version")
+            or "unknown"
+        )
+        payload = RealFuzzEngine(self.settings).prepare(
+            source_path,
+            version=version,
+            track=track,
+            propose_adapter=True,
+            seed=int(request.get("real_fuzz_seed", 1337)),
+        )
+        result["real_fuzz_prepare"] = payload
+        adapter_payload = {
+            "track": track,
+            "state": payload.get("adapter", {}).get("state"),
+            "inspection": payload.get("inspection", {}),
+            "adapter": payload.get("adapter", {}).get("adapter", {}),
+        }
+        self.repository.add_adapter_evaluation(job_id, adapter_payload)
+        ready = payload.get("workspace", {}).get("real_build_ready", False)
+        return {
+            "status": "ok" if ready else "skipped_with_reason",
+            "workspace": payload.get("workspace", {}).get("workspace"),
+            "adapter_state": payload.get("adapter", {}).get("state"),
+            "reason": None if ready else "exact adapter approval is required before real handler fuzzing",
+        }
+
+    def _real_fuzz(self, job_id: str, request: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]:
+        if not request.get("real_source_fuzz"):
+            return {"status": "skipped_with_reason", "reason": "real source fuzzing was not requested"}
+        workspace = result.get("real_fuzz_prepare", {}).get("workspace", {}).get("workspace")
+        if not workspace:
+            return {"status": "skipped_with_reason", "reason": "real fuzz workspace was not prepared"}
+        if not request.get("confirm_native_fuzz"):
+            return {
+                "status": "skipped_with_reason",
+                "reason": "real handler execution requires --confirm-native-fuzz",
+            }
+        handlers = request.get("real_fuzz_handlers") or [
+            "ReadStream",
+            "WriteStream",
+            "ExecProcess",
+            "SignalProcess",
+            "WaitProcess",
+            "UpdateContainer",
+        ]
+        engine = RealFuzzEngine(self.settings)
+        runs = engine.run_many(
+            workspace,
+            handlers=handlers,
+            seconds=request.get("fuzz_seconds"),
+            seed=int(request.get("real_fuzz_seed", 1337)),
+            confirm=True,
+        )
+        for run in runs:
+            if run.get("status") == "CONFIRMED_SANITIZER_CRASH" and run.get("evidence"):
+                reproduction = engine.reproduce(
+                    workspace,
+                    handler=str(run.get("handler_id")),
+                    artifact=run["evidence"][0]["artifact_path"],
+                    attempts=3,
+                    confirm=True,
+                )
+                run["reproducibility"].update(
+                    {
+                        "successful_reproductions": reproduction.get("successful_reproductions", 0),
+                        "attempts": reproduction.get("attempts", []),
+                    }
+                )
+            self.repository.add_real_fuzz_run(job_id, run)
+        result["real_fuzz_runs"] = runs
+        return {
+            "status": "completed",
+            "runs": len(runs),
+            "strong_crash_runs": sum(
+                item.get("status") == "CONFIRMED_SANITIZER_CRASH"
+                and (item.get("reproducibility") or {}).get("successful_reproductions", 0) >= 3
+                for item in runs
+            ),
+            "tracks": sorted({str(item.get("source_track")) for item in runs}),
+        }
+
+    def _candidate_triage(self, job_id: str, request: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]:
+        runs = result.get("real_fuzz_runs", [])
+        if not runs:
+            return {"status": "skipped_with_reason", "reason": "no real handler fuzz runs were available"}
+        triage = CandidateTriage()
+        candidates = []
+        for run in runs:
+            if run.get("status") in {"COMPLETED_NO_CRASH", "SKIPPED_WITH_REASON"}:
+                continue
+            candidate = triage.classify(run)
+            candidate["artifact_path"] = triage.write(candidate, self.settings.candidates_dir)
+            self.repository.add_candidate_v2(job_id, candidate)
+            candidates.append(candidate)
+        result["candidates_v2"] = candidates
+        return {
+            "status": "completed",
+            "candidates": len(candidates),
+            "levels": {
+                level: sum(item.get("level") == level for item in candidates)
+                for level in ["OBSERVATION", "WEAK_CANDIDATE", "STRONG_CANDIDATE", "VALIDATED_CANDIDATE"]
+            },
+        }
+
+    def _evidence_graph(self, job_id: str, request: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]:
+        candidates = result.get("candidates_v2", [])
+        if not candidates:
+            return {"status": "skipped_with_reason", "reason": "no candidates require evidence graphs"}
+        facts = result.get("environment", {})
+        graphs = {}
+        engine = ThreeValuedRuleEngine()
+        for candidate in candidates:
+            graph = ExploitabilityEvidenceGraph()
+            candidate_id = graph.add_candidate(candidate)
+            graph.add_environment_facts(facts)
+            version_rule = engine.evaluate(
+                "kata-version-match",
+                {
+                    "fact": "kata.version",
+                    "operator": "equals",
+                    "value": candidate.get("kata_version"),
+                },
+                facts,
+            )
+            graph.add_rule_result(candidate_id, version_rule)
+            level = str(candidate.get("level"))
+            controlled = TriState.TRUE if level in {"STRONG_CANDIDATE", "VALIDATED_CANDIDATE"} else TriState.UNKNOWN
+            boundary = TriState.TRUE if level == "VALIDATED_CANDIDATE" and candidate.get("isolation_invariant") else TriState.UNKNOWN
+            ladder = ExploitabilityLadder().assess(
+                affected_version=TriState(version_rule["outcome"]),
+                prerequisites=TriState.TRUE if result.get("kata_validation", {}).get("smoke", {}).get("ok") else TriState.UNKNOWN,
+                reachable=TriState.TRUE,
+                controlled_trigger=controlled,
+                boundary_impact=boundary,
+            )
+            candidate["exploitability_v2"] = ladder
+            graphs[candidate_id] = graph.payload()
+            self.repository.add_candidate_v2(job_id, candidate)
+        result["evidence_graphs"] = graphs
+        return {"status": "completed", "graphs": len(graphs)}
+
+    def _multi_agent(self, job_id: str, request: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]:
+        candidates = result.get("candidates_v2", [])
+        if not candidates:
+            return {"status": "skipped_with_reason", "reason": "no candidates require multi-agent review"}
+        coordinator = DeepSeekMultiAgent(self.settings)
+        reviews = []
+        for candidate in candidates:
+            payload = coordinator.run(
+                candidate=candidate,
+                evidence_graph=result.get("evidence_graphs", {}).get(candidate["candidate_id"], {}),
+                environment=result.get("environment", {}),
+                experiment={
+                    "real_fuzz_runs": [
+                        item for item in result.get("real_fuzz_runs", [])
+                        if item.get("handler_id") == candidate.get("handler_id")
+                    ]
+                },
+            )
+            self.repository.add_agent_run(job_id, candidate.get("candidate_id"), payload)
+            reviews.append({"candidate_id": candidate.get("candidate_id"), **payload})
+        result["multi_agent_reviews"] = reviews
+        completed = sum(item.get("status") == "completed" for item in reviews)
+        return {
+            "status": "completed" if completed else "skipped_with_reason",
+            "reviewed": completed,
+            "total": len(reviews),
+            "reason": None if completed else "DeepSeek was unavailable; deterministic phases remain valid",
+        }
+
     def _kata(self, job_id: str, request: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]:
         if not request.get("kata_smoke", True):
             return {"status": "skipped_with_reason", "reason": "Kata validation disabled by request"}
@@ -335,6 +540,15 @@ class M2Workflow:
             item
             for item in result.get("fuzz_runs", [])
             if item.get("status") == "confirmed_sanitizer_crash"
+        ] + [
+            {
+                **item,
+                "harness_id": item.get("handler_id"),
+                "crash_artifacts": item.get("evidence", []),
+            }
+            for item in result.get("real_fuzz_runs", [])
+            if item.get("status") == "CONFIRMED_SANITIZER_CRASH"
+            and (item.get("reproducibility") or {}).get("successful_reproductions", 0) >= 3
         ]
         if not crashes:
             return {

@@ -1,5 +1,19 @@
 # M2改动说明
 
+## 0.3.0：真实Kata Agent源码Fuzz与论文评测
+
+- 新增六个kata-agent RPC Handler的源码接口检测和接口指纹；
+- 新增版本化Adapter Manifest、候选/审批/语义漂移门控；
+- 新增独立cargo-fuzz工作区、状态序列和双分支确定性并发计划；
+- 新增OBSERVATION到VALIDATED_CANDIDATE的分级准入；
+- 新增多版本Runtime资产Manifest、Hash复核和分级Guest复验计划；
+- 新增三值规则、E0—E5硬证据阶梯和证据图；
+- 新增六个DeepSeek顾问Agent，禁止覆盖确定性门控；
+- 新增时间/分组隔离数据集、泄漏审计、分类/校准/排序/Fuzz指标；
+- 新增M2候选到正式可信知识库Candidate Bundle的安全导出；
+- M2运行数据库升级到Schema 2。
+
+
 ## 新增能力
 
 1. `cver.m2`独立子系统和`cver m2`命令入口。

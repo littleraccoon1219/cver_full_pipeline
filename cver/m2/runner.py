@@ -38,6 +38,7 @@ class SafeCommandRunner:
         "rustc",
         "cmake",
         "ninja",
+        "make",
         "pkg-config",
         "protoc",
         "grpc_cpp_plugin",
